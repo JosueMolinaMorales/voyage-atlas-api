@@ -1,5 +1,4 @@
-use voyage_atlas_api::api::{get_subscriber, init_subscriber, get_configuration, Application};
-
+use voyage_atlas_api::api::{get_configuration, get_subscriber, init_subscriber, Application};
 
 #[actix_web::main]
 async fn main() -> Result<(), std::io::Error> {
