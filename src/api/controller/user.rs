@@ -1,10 +1,13 @@
-
 use anyhow::Context;
 use jsonwebtoken::{EncodingKey, Header};
 use secrecy::{ExposeSecret, Secret};
 use sqlx::PgPool;
 
-use crate::api::{CreateUser, error::{Result, ApiError}, User, token::JwtPayload, AuthUser, LoginInfo};
+use crate::api::{
+    error::{ApiError, Result},
+    token::JwtPayload,
+    AuthUser, CreateUser, LoginInfo, User,
+};
 
 pub async fn register(new_user: CreateUser, conn: &PgPool) -> Result<String> {
     // Insert user into db

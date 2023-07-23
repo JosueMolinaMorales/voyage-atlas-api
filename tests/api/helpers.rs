@@ -1,7 +1,10 @@
 use once_cell::sync::Lazy;
 use sqlx::{sqlx_macros::migrate, Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
-use voyage_atlas_api::api::{get_subscriber, init_subscriber, get_configuration, Application, get_connection_pool, DatabaseSettings};
+use voyage_atlas_api::api::{
+    get_configuration, get_connection_pool, get_subscriber, init_subscriber, Application,
+    DatabaseSettings,
+};
 
 static TRACING: Lazy<()> = Lazy::new(|| {
     let default_filter_level = "info".to_string();

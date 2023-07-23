@@ -1,5 +1,5 @@
 pub mod error;
-mod user;
 pub mod token;
+mod user;
 
 pub use user::*;

@@ -7,7 +7,11 @@ use serde_json::json;
 use sqlx::PgPool;
 use validator::Validate;
 
-use crate::api::{CreateUser, error::{Result, ApiError}, controller, LoginInfo};
+use crate::api::{
+    controller,
+    error::{ApiError, Result},
+    CreateUser, LoginInfo,
+};
 
 #[post("/users")]
 async fn create_user(new_user: Json<CreateUser>, conn: Data<PgPool>) -> Result<HttpResponse> {
