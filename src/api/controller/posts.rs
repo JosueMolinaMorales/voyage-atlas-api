@@ -5,7 +5,7 @@ use uuid::Uuid;
 use crate::api::{
     database,
     error::{ApiError, Result},
-    Post,
+    CreatePost, Post,
 };
 
 pub async fn get_users_post(conn: &PgPool, user_id: String) -> Result<Vec<Post>> {
@@ -20,4 +20,9 @@ pub async fn get_users_post(conn: &PgPool, user_id: String) -> Result<Vec<Post>>
     // Get all posts by the user
     let posts = database::get_users_posts(conn, &user_id).await?;
     Ok(posts)
+}
+
+pub async fn create_post(conn: &PgPool, user_id: Uuid, post: CreatePost) -> Result<()> {
+    database::insert_post(conn, user_id, post).await?;
+    Ok(())
 }

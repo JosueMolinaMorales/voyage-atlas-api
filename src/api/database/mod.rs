@@ -7,7 +7,7 @@ use crate::api::User;
 
 use super::{
     error::{ApiError, Result},
-    CreateUser, Post,
+    CreatePost, CreateUser, Post,
 };
 
 pub async fn get_user_by_id(conn: &PgPool, user_id: &Uuid) -> Result<Option<User>> {
@@ -128,4 +128,22 @@ pub async fn get_users_posts(conn: &PgPool, user_id: &Uuid) -> Result<Vec<Post>>
     .collect::<Vec<Post>>();
 
     Ok(posts)
+}
+
+pub async fn insert_post(conn: &PgPool, user_id: Uuid, new_post: CreatePost) -> Result<()> {
+    sqlx::query!(
+        r#"
+        INSERT INTO posts (title, location, author, content)
+        VALUES ($1, $2, $3, $4)
+        "#,
+        new_post.title,
+        new_post.location,
+        user_id,
+        new_post.content
+    )
+    .execute(conn)
+    .await
+    .context("Failed to insert new post into database.")
+    .map_err(ApiError::Database)?;
+    Ok(())
 }

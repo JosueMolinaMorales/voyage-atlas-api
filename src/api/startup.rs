@@ -63,6 +63,7 @@ pub fn run(
         App::new()
             .service(health_check)
             .service(create_user)
+            .service(create_post)
             .service(login)
             .service(get_users_post)
             .app_data(connection.clone())
