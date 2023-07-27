@@ -9,7 +9,7 @@ use crate::api::{
     AuthUser, CreateUser, LoginInfo, User,
 };
 
-pub async fn register(new_user: CreateUser, conn: &PgPool) -> Result<String> {
+pub async fn register(new_user: CreateUser, conn: &PgPool) -> Result<(String, String)> {
     // Insert user into db
     let user_id = uuid::Uuid::new_v4();
 
@@ -44,7 +44,7 @@ pub async fn register(new_user: CreateUser, conn: &PgPool) -> Result<String> {
     // Generate JWT
     let jwt = token::generate_token(user_id.to_string())?;
 
-    Ok(jwt)
+    Ok((jwt, user_id.to_string()))
 }
 
 pub async fn login(login: LoginInfo, conn: &PgPool) -> Result<String> {

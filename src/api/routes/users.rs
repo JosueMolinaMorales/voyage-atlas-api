@@ -27,9 +27,10 @@ async fn create_user(new_user: Json<CreateUser>, conn: Data<PgPool>) -> Result<H
             .join(", ");
         ApiError::BadRequest(anyhow::anyhow!("Invalid fields: {}", errors))
     })?;
-    let token = controller::user::register(new_user.0, &conn).await?;
+    let (token, user_id) = controller::user::register(new_user.0, &conn).await?;
     Ok(HttpResponse::Created().json(json!({
         "bearer": token,
+        "user_id": user_id
     })))
 }
 

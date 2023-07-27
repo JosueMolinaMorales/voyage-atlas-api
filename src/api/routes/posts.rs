@@ -14,6 +14,7 @@ use sqlx::PgPool;
 use std::str::FromStr;
 
 #[get("/users/{user_id}/posts")]
+#[tracing::instrument(name = "Get A Users Post", skip(path, conn))]
 async fn get_users_post(path: Path<(String,)>, conn: Data<PgPool>) -> Result<HttpResponse> {
     let (user_id,) = path.into_inner();
     let posts = controller::posts::get_users_post(&conn, user_id).await?;
@@ -21,6 +22,7 @@ async fn get_users_post(path: Path<(String,)>, conn: Data<PgPool>) -> Result<Htt
 }
 
 #[post("/users/post")]
+#[tracing::instrument(name = "Create a New Post", skip(new_post, jwt, conn))]
 async fn create_post(
     new_post: Json<CreatePost>,
     jwt: JwtPayload,
