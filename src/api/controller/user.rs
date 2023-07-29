@@ -6,10 +6,10 @@ use crate::api::{
     database,
     error::{ApiError, Result},
     token::{self},
-    AuthUser, CreateUser, LoginInfo, User,
+    AuthInfo, AuthUser, CreateUser, LoginInfo, User,
 };
 
-pub async fn register(new_user: CreateUser, conn: &PgPool) -> Result<(String, String)> {
+pub async fn register(new_user: CreateUser, conn: &PgPool) -> Result<AuthInfo> {
     // Insert user into db
     let user_id = uuid::Uuid::new_v4();
 
@@ -42,12 +42,19 @@ pub async fn register(new_user: CreateUser, conn: &PgPool) -> Result<(String, St
     database::insert_user(conn, &user_id, hashed_pwd, &new_user).await?;
 
     // Generate JWT
-    let jwt = token::generate_token(user_id.to_string())?;
+    let jwt = token::generate_token(&user_id.to_string())?;
 
-    Ok((jwt, user_id.to_string()))
+    Ok(AuthInfo {
+        bearer: jwt,
+        user: AuthUser {
+            id: user_id.to_string(),
+            username: new_user.username,
+            email: new_user.email,
+        },
+    })
 }
 
-pub async fn login(login: LoginInfo, conn: &PgPool) -> Result<String> {
+pub async fn login(login: LoginInfo, conn: &PgPool) -> Result<AuthInfo> {
     // Check if user exists
     let user: Option<User> = database::get_user_by_email(conn, &login.email).await?;
 
@@ -66,7 +73,10 @@ pub async fn login(login: LoginInfo, conn: &PgPool) -> Result<String> {
     };
 
     // Generate JWT
-    let token = token::generate_token(auth_user.id)?;
+    let token = token::generate_token(&auth_user.id)?;
 
-    Ok(token)
+    Ok(AuthInfo {
+        bearer: token,
+        user: auth_user,
+    })
 }

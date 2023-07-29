@@ -3,7 +3,6 @@ use actix_web::{
     web::{Data, Json},
     HttpResponse,
 };
-use serde_json::json;
 use sqlx::PgPool;
 use validator::Validate;
 
@@ -27,18 +26,13 @@ async fn create_user(new_user: Json<CreateUser>, conn: Data<PgPool>) -> Result<H
             .join(", ");
         ApiError::BadRequest(anyhow::anyhow!("Invalid fields: {}", errors))
     })?;
-    let (token, user_id) = controller::user::register(new_user.0, &conn).await?;
-    Ok(HttpResponse::Created().json(json!({
-        "bearer": token,
-        "user_id": user_id
-    })))
+    let auth_info = controller::user::register(new_user.0, &conn).await?;
+    Ok(HttpResponse::Created().json(auth_info))
 }
 
 #[post("/users/login")]
 #[tracing::instrument(name = "Logging a user in", skip(login_info, conn))]
 async fn login(login_info: Json<LoginInfo>, conn: Data<PgPool>) -> Result<HttpResponse> {
-    let token = controller::user::login(login_info.0, &conn).await?;
-    Ok(HttpResponse::Ok().json(json!({
-        "bearer": token,
-    })))
+    let auth_info = controller::user::login(login_info.0, &conn).await?;
+    Ok(HttpResponse::Ok().json(auth_info))
 }

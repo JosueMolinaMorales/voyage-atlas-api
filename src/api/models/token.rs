@@ -51,11 +51,11 @@ impl FromRequest for JwtPayload {
     }
 }
 
-pub fn generate_token(user_id: String) -> Result<String> {
+pub fn generate_token(user_id: &str) -> Result<String> {
     Ok(jsonwebtoken::encode(
         &Header::default(),
         &JwtPayload {
-            user_id,
+            user_id: user_id.to_string(),
             iss: chrono::Utc::now().timestamp() as u64,
             exp: (chrono::Utc::now() + chrono::Duration::days(30)).timestamp() as u64,
         },
