@@ -1,9 +1,10 @@
 use once_cell::sync::Lazy;
+use serde_json::json;
 use sqlx::{sqlx_macros::migrate, Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 use voyage_atlas_api::api::{
-    get_configuration, get_connection_pool, get_subscriber, init_subscriber, Application,
-    DatabaseSettings,
+    get_configuration, get_connection_pool, get_subscriber, init_subscriber, Application, AuthInfo,
+    AuthUser, DatabaseSettings,
 };
 
 static TRACING: Lazy<()> = Lazy::new(|| {
@@ -23,6 +24,7 @@ pub struct TestApp {
     pub address: String,
     pub db_pool: PgPool,
     pub port: u16,
+    pub auth_info: AuthInfo,
 }
 
 impl TestApp {
@@ -30,6 +32,24 @@ impl TestApp {
         let client = reqwest::Client::new();
         let url = format!("{}/users", &self.address);
         client.post(&url).json(&body).send().await.unwrap()
+    }
+
+    pub async fn create_post(&self, body: serde_json::Value, bearer: &str) -> reqwest::Response {
+        let client = reqwest::Client::new();
+        let url = format!("{}/users/post", &self.address);
+        client
+            .post(&url)
+            .bearer_auth(bearer)
+            .json(&body)
+            .send()
+            .await
+            .unwrap()
+    }
+
+    pub async fn get_user_posts(&self, user_id: &str, bearer: &str) -> reqwest::Response {
+        let client = reqwest::Client::new();
+        let url = format!("{}/users/{}/posts", &self.address, user_id);
+        client.get(&url).bearer_auth(bearer).send().await.unwrap()
     }
 }
 
@@ -55,11 +75,33 @@ pub async fn spawn_app() -> TestApp {
     let address = format!("http://127.0.0.1:{}", application.port());
     let _ = tokio::spawn(application.run_until_stopped());
 
-    let test_app = TestApp {
+    let mut test_app = TestApp {
         address,
         port: application_port,
         db_pool: get_connection_pool(&configuration.database),
+        auth_info: AuthInfo {
+            bearer: "".to_string(),
+            user: AuthUser {
+                id: "".to_string(),
+                email: "".to_string(),
+                username: "".to_string(),
+            },
+        },
     };
+
+    // Create a user
+    let auth_info = {
+        let res = test_app
+            .post_user(json!({
+                "email": "email@email.com",
+                "password": "Password123!",
+                "username": "username"
+            }))
+            .await;
+        let user = res.json::<AuthInfo>().await.unwrap();
+        user
+    };
+    test_app.auth_info = auth_info;
     test_app
 }
 

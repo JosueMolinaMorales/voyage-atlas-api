@@ -9,7 +9,7 @@ async fn create_user() {
         .post_user(json!({
             "username": "testuser",
             "password": "Password123!",
-            "email": "email@email.com"
+            "email": "email123@email.com"
         }))
         .await;
 

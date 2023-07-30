@@ -8,14 +8,14 @@ pub struct User {
     pub password: Secret<String>,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct AuthUser {
     pub id: String,
     pub username: String,
     pub email: String,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct AuthInfo {
     pub bearer: String,
     pub user: AuthUser,
