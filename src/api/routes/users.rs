@@ -1,5 +1,5 @@
 use actix_web::{
-    post,
+    get, post,
     web::{Data, Json, Path},
     HttpResponse,
 };
@@ -55,4 +55,16 @@ async fn follow_user(
     controller::user::follow_user(user_id, followed_user_id, &conn).await?;
 
     Ok(HttpResponse::Created().finish())
+}
+
+#[get("/users/{user_id}/followers")]
+#[tracing::instrument(name = "Get a user's followers", skip(conn))]
+async fn get_followers(user_id: Path<(String,)>, conn: Data<PgPool>) -> Result<HttpResponse> {
+    let (user_id,) = user_id.into_inner();
+    let user_id =
+        Uuid::parse_str(&user_id).map_err(|e| ApiError::BadRequest(anyhow::anyhow!(e)))?;
+
+    let followers = controller::user::get_followers(user_id, &conn).await?;
+
+    Ok(HttpResponse::Ok().json(followers))
 }

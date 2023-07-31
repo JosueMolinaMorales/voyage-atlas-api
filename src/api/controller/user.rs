@@ -104,3 +104,9 @@ pub async fn follow_user(follower_id: Uuid, followed_id: Uuid, conn: &PgPool) ->
 
     Ok(())
 }
+
+pub async fn get_followers(user_id: Uuid, conn: &PgPool) -> Result<Vec<AuthUser>> {
+    let followers = database::get_followers(conn, &user_id).await?;
+
+    Ok(followers)
+}

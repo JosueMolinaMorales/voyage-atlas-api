@@ -7,7 +7,7 @@ use crate::api::User;
 
 use super::{
     error::{ApiError, Result},
-    CreatePost, CreateUser, Post,
+    AuthUser, CreatePost, CreateUser, Post,
 };
 
 pub async fn get_user_by_id(conn: &PgPool, user_id: &Uuid) -> Result<Option<User>> {
@@ -183,4 +183,29 @@ pub async fn is_following(conn: &PgPool, follower_id: &Uuid, followed_id: &Uuid)
     .is_following;
 
     Ok(is_following)
+}
+
+pub async fn get_followers(conn: &PgPool, user_id: &Uuid) -> Result<Vec<AuthUser>> {
+    let followers = sqlx::query!(
+        r#"
+        SELECT users.id, users.username, users.email
+        FROM users
+        INNER JOIN users_followers ON users.id = users_followers.follower_id
+        WHERE users_followers.user_id = $1
+        "#,
+        user_id
+    )
+    .fetch_all(conn)
+    .await
+    .context("Failed to get user's followers.")
+    .map_err(ApiError::Database)?
+    .into_iter()
+    .map(|user| AuthUser {
+        id: user.id.to_string(),
+        username: user.username,
+        email: user.email,
+    })
+    .collect::<Vec<AuthUser>>();
+
+    Ok(followers)
 }
