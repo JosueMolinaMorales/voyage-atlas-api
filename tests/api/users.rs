@@ -161,3 +161,43 @@ async fn test_follow_user_already_following_user() {
         .await;
     assert_eq!(res.status().as_u16(), 400);
 }
+
+#[tokio::test]
+async fn test_get_users_followers() {
+    let test_app = spawn_app().await;
+    // Create user
+    let new_user = TestAuthInfo::generate();
+    new_user.store(&test_app.db_pool).await;
+
+    // Follow user
+    let res = test_app
+        .follow_user(&new_user.user.id, &test_app.auth_info.bearer)
+        .await;
+    assert_eq!(res.status().as_u16(), 201);
+
+    // Get followers
+    let res = test_app.get_followers(&new_user.user.id).await;
+    assert_eq!(res.status().as_u16(), 200);
+    let followers = res.json::<Vec<Value>>().await.unwrap();
+    assert_eq!(followers.len(), 1);
+}
+
+#[tokio::test]
+async fn test_get_users_following() {
+    let test_app = spawn_app().await;
+    // Create user
+    let new_user = TestAuthInfo::generate();
+    new_user.store(&test_app.db_pool).await;
+
+    // Follow user
+    let res = test_app
+        .follow_user(&new_user.user.id, &test_app.auth_info.bearer)
+        .await;
+    assert_eq!(res.status().as_u16(), 201);
+
+    // Get following
+    let res = test_app.get_following(&test_app.auth_info.user.id).await;
+    assert_eq!(res.status().as_u16(), 200);
+    let following = res.json::<Vec<Value>>().await.unwrap();
+    assert_eq!(following.len(), 1);
+}

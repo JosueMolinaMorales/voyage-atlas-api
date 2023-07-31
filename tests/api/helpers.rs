@@ -94,6 +94,18 @@ impl TestApp {
         let url = format!("{}/users/{}/follow", &self.address, followed_user);
         client.post(&url).bearer_auth(bearer).send().await.unwrap()
     }
+
+    pub async fn get_followers(&self, user_id: &str) -> reqwest::Response {
+        let client = reqwest::Client::new();
+        let url = format!("{}/users/{}/followers", &self.address, user_id);
+        client.get(&url).send().await.unwrap()
+    }
+
+    pub async fn get_following(&self, user_id: &str) -> reqwest::Response {
+        let client = reqwest::Client::new();
+        let url = format!("{}/users/{}/following", &self.address, user_id);
+        client.get(&url).send().await.unwrap()
+    }
 }
 
 pub async fn spawn_app() -> TestApp {
