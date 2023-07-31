@@ -106,6 +106,17 @@ impl TestApp {
         let url = format!("{}/users/{}/following", &self.address, user_id);
         client.get(&url).send().await.unwrap()
     }
+
+    pub async fn unfollow_user(&self, followed_user: &str, bearer: &str) -> reqwest::Response {
+        let client = reqwest::Client::new();
+        let url = format!("{}/users/{}/unfollow", &self.address, followed_user);
+        client
+            .delete(&url)
+            .bearer_auth(bearer)
+            .send()
+            .await
+            .unwrap()
+    }
 }
 
 pub async fn spawn_app() -> TestApp {

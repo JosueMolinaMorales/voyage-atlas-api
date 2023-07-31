@@ -236,3 +236,19 @@ pub async fn get_following(conn: &PgPool, user_id: &Uuid) -> Result<Vec<AuthUser
 
     Ok(following)
 }
+
+pub async fn unfollow_user(conn: &PgPool, user_id: &Uuid, followed_id: &Uuid) -> Result<()> {
+    sqlx::query!(
+        r#"
+        DELETE FROM users_followers
+        WHERE user_id = $1 AND follower_id = $2
+        "#,
+        followed_id,
+        user_id
+    )
+    .execute(conn)
+    .await
+    .context("Failed to unfollow user.")
+    .map_err(ApiError::Database)?;
+    Ok(())
+}

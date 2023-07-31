@@ -1,6 +1,7 @@
-use serde_json::{json, Value};
-
 use crate::helpers::{spawn_app, TestAuthInfo};
+use serde_json::{json, Value};
+use std::str::FromStr;
+use uuid::Uuid;
 
 #[tokio::test]
 async fn create_user() {
@@ -200,4 +201,38 @@ async fn test_get_users_following() {
     assert_eq!(res.status().as_u16(), 200);
     let following = res.json::<Vec<Value>>().await.unwrap();
     assert_eq!(following.len(), 1);
+}
+
+#[tokio::test]
+async fn test_unfollow_user() {
+    let test_app = spawn_app().await;
+    // Create user
+    let new_user = TestAuthInfo::generate();
+    new_user.store(&test_app.db_pool).await;
+
+    // Follow user
+    let res = test_app
+        .follow_user(&new_user.user.id, &test_app.auth_info.bearer)
+        .await;
+    assert_eq!(res.status().as_u16(), 201);
+
+    // Unfollow user
+    let res = test_app
+        .unfollow_user(&new_user.user.id, &test_app.auth_info.bearer)
+        .await;
+    assert_eq!(res.status().as_u16(), 200);
+    // Assert that the user is not following the other user
+    let res = sqlx::query!(
+        r#"
+        SELECT * FROM users_followers
+        WHERE user_id = $1 AND follower_id = $2
+        "#,
+        Uuid::from_str(&test_app.auth_info.user.id).unwrap(),
+        Uuid::from_str(&new_user.user.id).unwrap()
+    )
+    .fetch_optional(&test_app.db_pool)
+    .await
+    .unwrap();
+
+    assert!(res.is_none());
 }

@@ -1,5 +1,5 @@
 use actix_web::{
-    get, post,
+    delete, get, post,
     web::{Data, Json, Path},
     HttpResponse,
 };
@@ -79,4 +79,22 @@ async fn get_following(user_id: Path<(String,)>, conn: Data<PgPool>) -> Result<H
     let following = controller::user::get_following(user_id, &conn).await?;
 
     Ok(HttpResponse::Ok().json(following))
+}
+
+#[delete("/users/{user_id}/unfollow")]
+#[tracing::instrument(name = "Unfollow a user", skip(conn))]
+async fn unfollow_user(
+    token: JwtPayload,
+    followed_user: Path<(String,)>,
+    conn: Data<PgPool>,
+) -> Result<HttpResponse> {
+    let (followed_user_id,) = followed_user.into_inner();
+    let followed_user_id =
+        Uuid::parse_str(&followed_user_id).map_err(|e| ApiError::BadRequest(anyhow::anyhow!(e)))?;
+    let user_id =
+        Uuid::parse_str(&token.user_id).map_err(|e| ApiError::BadRequest(anyhow::anyhow!(e)))?;
+
+    controller::user::unfollow_user(user_id, followed_user_id, &conn).await?;
+
+    Ok(HttpResponse::Ok().finish())
 }

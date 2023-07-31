@@ -116,3 +116,27 @@ pub async fn get_following(user_id: Uuid, conn: &PgPool) -> Result<Vec<AuthUser>
 
     Ok(following)
 }
+
+pub async fn unfollow_user(user_id: Uuid, followed_id: Uuid, conn: &PgPool) -> Result<()> {
+    // Check if users exist
+    let user = database::get_user_by_id(conn, &user_id).await?;
+    let followed_user = database::get_user_by_id(conn, &followed_id).await?;
+
+    // Check if user is not following the user
+    if user.is_none() || followed_user.is_none() {
+        return Err(ApiError::NotFound(anyhow::anyhow!("User does not exist")));
+    }
+
+    // Check if user is not following other user
+    let is_following = database::is_following(conn, &user_id, &followed_id).await?;
+
+    if !is_following {
+        return Err(ApiError::BadRequest(anyhow::anyhow!(
+            "You are not following this user".to_string()
+        )));
+    }
+    // Unfollow user
+    database::unfollow_user(conn, &user_id, &followed_id).await?;
+
+    Ok(())
+}
