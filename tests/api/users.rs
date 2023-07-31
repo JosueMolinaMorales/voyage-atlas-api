@@ -236,3 +236,17 @@ async fn test_unfollow_user() {
 
     assert!(res.is_none());
 }
+
+#[tokio::test]
+async fn test_unfollow_user_is_not_following_user() {
+    let test_app = spawn_app().await;
+    // Create user
+    let new_user = TestAuthInfo::generate();
+    new_user.store(&test_app.db_pool).await;
+
+    // Unfollow user
+    let res = test_app
+        .unfollow_user(&new_user.user.id, &test_app.auth_info.bearer)
+        .await;
+    assert_eq!(res.status().as_u16(), 400);
+}
