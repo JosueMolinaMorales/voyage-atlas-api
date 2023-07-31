@@ -1,6 +1,6 @@
 -- Add migration script here
 create table posts (
-    id UUID default gen_random_uuid() PRIMARY KEY,
+    id UUID PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     location VARCHAR(255) NOT NULL,
     content TEXT NOT NULL,

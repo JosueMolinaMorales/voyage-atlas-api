@@ -131,11 +131,13 @@ pub async fn get_users_posts(conn: &PgPool, user_id: &Uuid) -> Result<Vec<Post>>
 }
 
 pub async fn insert_post(conn: &PgPool, user_id: Uuid, new_post: CreatePost) -> Result<()> {
+    let id = Uuid::new_v4();
     sqlx::query!(
         r#"
-        INSERT INTO posts (title, location, author, content)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO posts (id, title, location, author, content)
+        VALUES ($1, $2, $3, $4, $5)
         "#,
+        id,
         new_post.title,
         new_post.location,
         user_id,
@@ -154,8 +156,8 @@ pub async fn follow_user(conn: &PgPool, follower_id: &Uuid, followed_id: &Uuid) 
         INSERT INTO users_followers (user_id, follower_id)
         VALUES ($1, $2)
         "#,
-        follower_id,
-        followed_id
+        followed_id,
+        follower_id
     )
     .execute(conn)
     .await
@@ -208,4 +210,29 @@ pub async fn get_followers(conn: &PgPool, user_id: &Uuid) -> Result<Vec<AuthUser
     .collect::<Vec<AuthUser>>();
 
     Ok(followers)
+}
+
+pub async fn get_following(conn: &PgPool, user_id: &Uuid) -> Result<Vec<AuthUser>> {
+    let following = sqlx::query!(
+        r#"
+        SELECT users.id, users.username, users.email
+        FROM users
+        INNER JOIN users_followers ON users.id = users_followers.user_id
+        WHERE users_followers.follower_id = $1
+        "#,
+        user_id
+    )
+    .fetch_all(conn)
+    .await
+    .context("Failed to get user's following.")
+    .map_err(ApiError::Database)?
+    .into_iter()
+    .map(|user| AuthUser {
+        id: user.id.to_string(),
+        username: user.username,
+        email: user.email,
+    })
+    .collect::<Vec<AuthUser>>();
+
+    Ok(following)
 }

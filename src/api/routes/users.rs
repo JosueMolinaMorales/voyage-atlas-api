@@ -68,3 +68,15 @@ async fn get_followers(user_id: Path<(String,)>, conn: Data<PgPool>) -> Result<H
 
     Ok(HttpResponse::Ok().json(followers))
 }
+
+#[get("/users/{user_id}/following")]
+#[tracing::instrument(name = "Get a user's following", skip(conn))]
+async fn get_following(user_id: Path<(String,)>, conn: Data<PgPool>) -> Result<HttpResponse> {
+    let (user_id,) = user_id.into_inner();
+    let user_id =
+        Uuid::parse_str(&user_id).map_err(|e| ApiError::BadRequest(anyhow::anyhow!(e)))?;
+
+    let following = controller::user::get_following(user_id, &conn).await?;
+
+    Ok(HttpResponse::Ok().json(following))
+}
