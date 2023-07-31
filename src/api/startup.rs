@@ -66,6 +66,7 @@ pub fn run(
             .service(create_post)
             .service(login)
             .service(get_users_post)
+            .service(follow_user)
             .app_data(connection.clone())
             .app_data(base_url.clone())
             .app_data(port.clone())

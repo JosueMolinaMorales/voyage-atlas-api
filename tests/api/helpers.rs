@@ -1,9 +1,8 @@
 use once_cell::sync::Lazy;
-use serde_json::json;
 use sqlx::{sqlx_macros::migrate, Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 use voyage_atlas_api::api::{
-    get_configuration, get_connection_pool, get_subscriber, init_subscriber, Application, AuthInfo,
+    get_configuration, get_connection_pool, get_subscriber, init_subscriber, token, Application,
     AuthUser, DatabaseSettings,
 };
 
@@ -24,7 +23,45 @@ pub struct TestApp {
     pub address: String,
     pub db_pool: PgPool,
     pub port: u16,
-    pub auth_info: AuthInfo,
+    pub auth_info: TestAuthInfo,
+}
+
+pub struct TestAuthInfo {
+    pub bearer: String,
+    pub user: AuthUser,
+}
+
+impl TestAuthInfo {
+    pub fn generate() -> Self {
+        let id = Uuid::new_v4().to_string();
+        let token = token::generate_token(&id).unwrap();
+        TestAuthInfo {
+            bearer: token,
+            user: AuthUser {
+                id,
+                username: Uuid::new_v4().to_string(),
+                email: format!("{}@email", Uuid::new_v4().to_string()),
+            },
+        }
+    }
+
+    pub async fn store(&self, pool: &PgPool) {
+        let password = pwhash::bcrypt::hash("Password123!").unwrap();
+        let id = Uuid::parse_str(&self.user.id).unwrap();
+        sqlx::query!(
+            r#"
+            INSERT INTO users (id, username, email, password)
+            VALUES ($1, $2, $3, $4)
+            "#,
+            id,
+            self.user.username,
+            self.user.email,
+            password
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+    }
 }
 
 impl TestApp {
@@ -51,6 +88,12 @@ impl TestApp {
         let url = format!("{}/users/{}/posts", &self.address, user_id);
         client.get(&url).bearer_auth(bearer).send().await.unwrap()
     }
+
+    pub async fn follow_user(&self, followed_user: &str, bearer: &str) -> reqwest::Response {
+        let client = reqwest::Client::new();
+        let url = format!("{}/users/{}/follow", &self.address, followed_user);
+        client.post(&url).bearer_auth(bearer).send().await.unwrap()
+    }
 }
 
 pub async fn spawn_app() -> TestApp {
@@ -75,33 +118,16 @@ pub async fn spawn_app() -> TestApp {
     let address = format!("http://127.0.0.1:{}", application.port());
     let _ = tokio::spawn(application.run_until_stopped());
 
-    let mut test_app = TestApp {
+    let test_app = TestApp {
         address,
         port: application_port,
         db_pool: get_connection_pool(&configuration.database),
-        auth_info: AuthInfo {
-            bearer: "".to_string(),
-            user: AuthUser {
-                id: "".to_string(),
-                email: "".to_string(),
-                username: "".to_string(),
-            },
-        },
+        auth_info: TestAuthInfo::generate(),
     };
 
     // Create a user
-    let auth_info = {
-        let res = test_app
-            .post_user(json!({
-                "email": "email@email.com",
-                "password": "Password123!",
-                "username": "username"
-            }))
-            .await;
-        let user = res.json::<AuthInfo>().await.unwrap();
-        user
-    };
-    test_app.auth_info = auth_info;
+    test_app.auth_info.store(&test_app.db_pool).await;
+
     test_app
 }
 

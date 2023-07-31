@@ -147,3 +147,40 @@ pub async fn insert_post(conn: &PgPool, user_id: Uuid, new_post: CreatePost) -> 
     .map_err(ApiError::Database)?;
     Ok(())
 }
+
+pub async fn follow_user(conn: &PgPool, follower_id: &Uuid, followed_id: &Uuid) -> Result<()> {
+    sqlx::query!(
+        r#"
+        INSERT INTO users_followers (user_id, follower_id)
+        VALUES ($1, $2)
+        "#,
+        follower_id,
+        followed_id
+    )
+    .execute(conn)
+    .await
+    .context("Failed to insert new follower into database.")
+    .map_err(ApiError::Database)?;
+    Ok(())
+}
+
+pub async fn is_following(conn: &PgPool, follower_id: &Uuid, followed_id: &Uuid) -> Result<bool> {
+    let is_following = sqlx::query!(
+        r#"
+        SELECT EXISTS (
+            SELECT 1
+            FROM users_followers
+            WHERE user_id = $1 AND follower_id = $2
+        ) AS "is_following!"
+        "#,
+        followed_id,
+        follower_id
+    )
+    .fetch_one(conn)
+    .await
+    .context("Failed to check if user is following.")
+    .map_err(ApiError::Database)?
+    .is_following;
+
+    Ok(is_following)
+}

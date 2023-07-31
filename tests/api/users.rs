@@ -1,6 +1,6 @@
 use serde_json::{json, Value};
 
-use crate::helpers::spawn_app;
+use crate::helpers::{spawn_app, TestAuthInfo};
 
 #[tokio::test]
 async fn create_user() {
@@ -73,19 +73,10 @@ async fn create_user_fails_invalid_data() {
 #[tokio::test]
 async fn test_login() {
     let test_app = spawn_app().await;
-    // Create user
-    test_app
-        .post_user(json!({
-            "username": "testuser",
-            "password": "Password123!",
-            "email": "email@email.com"
-        }))
-        .await;
-
     let res = reqwest::Client::new()
         .post(format!("{}/users/login", test_app.address))
         .json(&json!({
-            "email": "email@email.com",
+            "email": test_app.auth_info.user.email,
             "password": "Password123!"
         }))
         .send()
@@ -99,14 +90,7 @@ async fn test_login() {
 #[tokio::test]
 async fn test_login_fails() {
     let test_app = spawn_app().await;
-    // Create user
-    test_app
-        .post_user(json!({
-            "username": "testuser",
-            "password": "Password123!",
-            "email": "email@email.com",
-        }))
-        .await;
+
     let test_data = vec![
         (
             json!({
@@ -117,7 +101,7 @@ async fn test_login_fails() {
         ),
         (
             json!({
-                "email": "email@email.com",
+                "email": test_app.auth_info.user.email,
                 "password": "password"
             }),
             "Password was wrong",
@@ -143,4 +127,37 @@ async fn test_login_fails() {
             "Login Validation Failed for: {reason}",
         );
     }
+}
+
+#[tokio::test]
+async fn test_follow_user() {
+    let test_app = spawn_app().await;
+    // Create user
+    let new_user = TestAuthInfo::generate();
+    new_user.store(&test_app.db_pool).await;
+
+    let res = test_app
+        .follow_user(&new_user.user.id, &test_app.auth_info.bearer)
+        .await;
+
+    assert_eq!(res.status().as_u16(), 201);
+}
+
+#[tokio::test]
+async fn test_follow_user_already_following_user() {
+    let test_app = spawn_app().await;
+    // Create user
+    let new_user = TestAuthInfo::generate();
+    new_user.store(&test_app.db_pool).await;
+
+    // Follow user
+    let res = test_app
+        .follow_user(&new_user.user.id, &test_app.auth_info.bearer)
+        .await;
+    assert_eq!(res.status().as_u16(), 201);
+    // Follow user again
+    let res = test_app
+        .follow_user(&new_user.user.id, &test_app.auth_info.bearer)
+        .await;
+    assert_eq!(res.status().as_u16(), 400);
 }
