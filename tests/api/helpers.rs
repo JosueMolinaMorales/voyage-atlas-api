@@ -32,6 +32,19 @@ pub struct TestAuthInfo {
 }
 
 impl TestAuthInfo {
+    pub fn new(username: &str) -> Self {
+        let id = Uuid::new_v4().to_string();
+        let token = token::generate_token(&id).unwrap();
+        TestAuthInfo {
+            bearer: token,
+            user: AuthUser {
+                id,
+                username: username.to_string(),
+                email: format!("{}@email", username),
+            },
+        }
+    }
+
     pub fn generate() -> Self {
         let id = Uuid::new_v4().to_string();
         let token = token::generate_token(&id).unwrap();
@@ -116,6 +129,15 @@ impl TestApp {
             .send()
             .await
             .unwrap()
+    }
+
+    pub async fn get_all_users(&self, query: Option<String>) -> reqwest::Response {
+        let client = reqwest::Client::new();
+        let url = match query {
+            Some(q) => format!("{}/users?query={}", &self.address, q),
+            None => format!("{}/users", &self.address),
+        };
+        client.get(&url).send().await.unwrap()
     }
 }
 

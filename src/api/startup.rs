@@ -70,6 +70,7 @@ pub fn run(
             .service(get_followers)
             .service(get_following)
             .service(unfollow_user)
+            .service(get_all_users)
             .app_data(connection.clone())
             .app_data(base_url.clone())
             .app_data(port.clone())

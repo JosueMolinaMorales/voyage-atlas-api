@@ -250,3 +250,36 @@ async fn test_unfollow_user_is_not_following_user() {
         .await;
     assert_eq!(res.status().as_u16(), 400);
 }
+
+#[tokio::test]
+async fn test_get_all_users() {
+    let test_app = spawn_app().await;
+    // Create users
+
+    for _ in 0..15 {
+        let new_user = TestAuthInfo::generate();
+        new_user.store(&test_app.db_pool).await;
+    }
+
+    // Get all users
+    let res = test_app.get_all_users(None).await;
+    assert_eq!(res.status().as_u16(), 200);
+    let users = res.json::<Vec<Value>>().await.unwrap();
+    assert_eq!(users.len(), 16);
+}
+
+#[tokio::test]
+async fn test_get_users_query() {
+    let test_app = spawn_app().await;
+    for i in 0..10 {
+        // Create user
+        let new_user = TestAuthInfo::new(&format!("testuser{i}"));
+        new_user.store(&test_app.db_pool).await;
+    }
+
+    // Get users
+    let res = test_app.get_all_users(Some("test".into())).await;
+    assert_eq!(res.status().as_u16(), 200);
+    let users = res.json::<Vec<Value>>().await.unwrap();
+    assert_eq!(users.len(), 10);
+}

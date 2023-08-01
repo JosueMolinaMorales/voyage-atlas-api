@@ -252,3 +252,49 @@ pub async fn unfollow_user(conn: &PgPool, user_id: &Uuid, followed_id: &Uuid) ->
     .map_err(ApiError::Database)?;
     Ok(())
 }
+
+pub async fn get_all_users(conn: &PgPool) -> Result<Vec<AuthUser>> {
+    let users = sqlx::query!(
+        r#"
+        SELECT id, username, email
+        FROM users
+        "#,
+    )
+    .fetch_all(conn)
+    .await
+    .context("Failed to get all users.")
+    .map_err(ApiError::Database)?
+    .into_iter()
+    .map(|user| AuthUser {
+        id: user.id.to_string(),
+        username: user.username,
+        email: user.email,
+    })
+    .collect::<Vec<AuthUser>>();
+
+    Ok(users)
+}
+
+pub async fn get_users_by_query(query: String, conn: &PgPool) -> Result<Vec<AuthUser>> {
+    let users = sqlx::query!(
+        r#"
+        SELECT id, username, email
+        FROM users
+        WHERE username LIKE $1
+        "#,
+        format!("%{}%", query)
+    )
+    .fetch_all(conn)
+    .await
+    .context("Failed to get users by query.")
+    .map_err(ApiError::Database)?
+    .into_iter()
+    .map(|user| AuthUser {
+        id: user.id.to_string(),
+        username: user.username,
+        email: user.email,
+    })
+    .collect::<Vec<AuthUser>>();
+
+    Ok(users)
+}

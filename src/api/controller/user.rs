@@ -140,3 +140,17 @@ pub async fn unfollow_user(user_id: Uuid, followed_id: Uuid, conn: &PgPool) -> R
 
     Ok(())
 }
+
+pub async fn get_users(query: Option<String>, conn: &PgPool) -> Result<Vec<AuthUser>> {
+    let users: Vec<AuthUser>;
+    match query {
+        Some(query) => {
+            users = database::get_users_by_query(query, conn).await?;
+        }
+        None => {
+            users = database::get_all_users(conn).await?;
+        }
+    }
+
+    Ok(users)
+}
