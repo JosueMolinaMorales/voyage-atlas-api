@@ -22,9 +22,9 @@ pub async fn get_users_post(conn: &PgPool, user_id: String) -> Result<Vec<Post>>
     Ok(posts)
 }
 
-pub async fn create_post(conn: &PgPool, user_id: Uuid, post: CreatePost) -> Result<()> {
-    database::insert_post(conn, user_id, post).await?;
-    Ok(())
+pub async fn create_post(conn: &PgPool, user_id: Uuid, post: CreatePost) -> Result<String> {
+    let post_id = database::insert_post(conn, user_id, post).await?;
+    Ok(post_id)
 }
 
 pub async fn get_users_feed(conn: &PgPool, user_id: Uuid) -> Result<Vec<Post>> {

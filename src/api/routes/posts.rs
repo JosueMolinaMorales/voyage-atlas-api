@@ -10,6 +10,7 @@ use actix_web::{
     HttpResponse,
 };
 use anyhow::{anyhow, Context};
+use serde_json::json;
 use sqlx::PgPool;
 use std::str::FromStr;
 use uuid::Uuid;
@@ -32,9 +33,9 @@ async fn create_post(
     let user_id =
         uuid::Uuid::from_str(&jwt.user_id).map_err(|e| ApiError::InternalServer(anyhow!(e)))?;
 
-    controller::posts::create_post(&conn, user_id, new_post.0).await?;
+    let post_id = controller::posts::create_post(&conn, user_id, new_post.0).await?;
 
-    Ok(HttpResponse::Created().finish())
+    Ok(HttpResponse::Created().json(json!({ "post_id": post_id })))
 }
 
 #[get("/feed")]

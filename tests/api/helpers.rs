@@ -3,7 +3,7 @@ use sqlx::{sqlx_macros::migrate, Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 use voyage_atlas_api::api::{
     get_configuration, get_connection_pool, get_subscriber, init_subscriber, token, Application,
-    AuthUser, DatabaseSettings,
+    AuthUser, CreateComment, DatabaseSettings,
 };
 
 static TRACING: Lazy<()> = Lazy::new(|| {
@@ -145,6 +145,23 @@ impl TestApp {
         let client = reqwest::Client::new();
         let url = format!("{}/feed", &self.address,);
         client.get(&url).bearer_auth(token).send().await.unwrap()
+    }
+
+    pub async fn create_comment(
+        &self,
+        post_id: &str,
+        comment: CreateComment,
+        token: &str,
+    ) -> reqwest::Response {
+        let client = reqwest::Client::new();
+        let url = format!("{}/post/{}/comment", &self.address, post_id);
+        client
+            .post(&url)
+            .bearer_auth(token)
+            .json(&comment)
+            .send()
+            .await
+            .unwrap()
     }
 }
 

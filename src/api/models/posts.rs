@@ -6,6 +6,8 @@ pub struct Post {
     pub content: String,
     pub author: String,
     pub created_at: i64,
+    pub num_likes: u32,
+    pub num_comments: u32,
 }
 
 #[derive(serde::Deserialize, validator::Validate)]

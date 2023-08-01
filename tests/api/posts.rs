@@ -4,6 +4,8 @@
     - Gettting a post
 */
 
+use std::str::FromStr;
+
 use uuid::Uuid;
 use voyage_atlas_api::api::Post;
 
@@ -19,6 +21,20 @@ async fn test_creating_a_post() {
     });
     let response = test_app.create_post(body, &test_app.auth_info.bearer).await;
     assert_eq!(response.status().as_u16(), 201);
+    let json = response.json::<serde_json::Value>().await.unwrap();
+    let post_id = Uuid::from_str(json.get("post_id").unwrap().as_str().unwrap()).unwrap();
+    // Check that the post was created
+    let post = sqlx::query!(
+        r#"
+        SELECT * from posts
+        WHERE id = $1"#,
+        post_id
+    )
+    .fetch_optional(&test_app.db_pool)
+    .await
+    .unwrap();
+
+    assert!(post.is_some());
 }
 
 #[tokio::test]
@@ -41,6 +57,11 @@ async fn test_get_user_posts() {
     assert_eq!(res.status().as_u16(), 200);
     let posts: Vec<Post> = res.json().await.unwrap();
     assert_eq!(posts.len(), 5);
+    // Check that the posts have 0 likes and comments
+    for post in posts {
+        assert_eq!(post.num_likes, 0);
+        assert_eq!(post.num_comments, 0);
+    }
 }
 
 #[tokio::test]

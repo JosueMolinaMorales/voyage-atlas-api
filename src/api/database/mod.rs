@@ -7,7 +7,7 @@ use crate::api::User;
 
 use super::{
     error::{ApiError, Result},
-    AuthUser, CreatePost, CreateUser, Post,
+    AuthUser, CreateComment, CreatePost, CreateUser, Post,
 };
 
 pub async fn get_user_by_id(conn: &PgPool, user_id: &Uuid) -> Result<Option<User>> {
@@ -106,7 +106,9 @@ pub async fn insert_user(
 pub async fn get_users_posts(conn: &PgPool, user_id: &Uuid) -> Result<Vec<Post>> {
     let posts = sqlx::query!(
         r#"
-        SELECT *
+        SELECT id, title, location, author, content, created_at,
+        (SELECT COUNT(*) FROM comments WHERE comments.post_id = posts.id) AS "num_comments!", 
+        (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id) AS "num_likes!"
         FROM posts
         WHERE author = $1
         "#,
@@ -124,13 +126,15 @@ pub async fn get_users_posts(conn: &PgPool, user_id: &Uuid) -> Result<Vec<Post>>
         content: post.content,
         author: post.author.to_string(),
         created_at: post.created_at.timestamp(),
+        num_likes: post.num_likes as u32,
+        num_comments: post.num_comments as u32,
     })
     .collect::<Vec<Post>>();
 
     Ok(posts)
 }
 
-pub async fn insert_post(conn: &PgPool, user_id: Uuid, new_post: CreatePost) -> Result<()> {
+pub async fn insert_post(conn: &PgPool, user_id: Uuid, new_post: CreatePost) -> Result<String> {
     let id = Uuid::new_v4();
     sqlx::query!(
         r#"
@@ -147,7 +151,7 @@ pub async fn insert_post(conn: &PgPool, user_id: Uuid, new_post: CreatePost) -> 
     .await
     .context("Failed to insert new post into database.")
     .map_err(ApiError::Database)?;
-    Ok(())
+    Ok(id.to_string())
 }
 
 pub async fn follow_user(conn: &PgPool, follower_id: &Uuid, followed_id: &Uuid) -> Result<()> {
@@ -302,7 +306,9 @@ pub async fn get_users_by_query(query: String, conn: &PgPool) -> Result<Vec<Auth
 pub async fn get_users_feed(conn: &PgPool, user_id: &Uuid) -> Result<Vec<Post>> {
     let posts = sqlx::query!(
         r#"
-        SELECT posts.id, posts.title, posts.location, posts.content, posts.author, posts.created_at
+        SELECT posts.id, posts.title, posts.location, posts.content, posts.author, posts.created_at, 
+        (SELECT COUNT(*) FROM comments WHERE comments.post_id = posts.id) AS "num_comments!", 
+        (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id) AS "num_likes!"
         FROM posts
         INNER JOIN users_followers ON posts.author = users_followers.user_id
         WHERE users_followers.follower_id = $1
@@ -322,8 +328,63 @@ pub async fn get_users_feed(conn: &PgPool, user_id: &Uuid) -> Result<Vec<Post>> 
         content: post.content,
         author: post.author.to_string(),
         created_at: post.created_at.timestamp(),
+        num_comments: post.num_comments as u32,
+        num_likes: post.num_likes as u32,
     })
     .collect::<Vec<Post>>();
 
     Ok(posts)
+}
+
+pub async fn create_comment(
+    new_comment: CreateComment,
+    user_id: &Uuid,
+    post_id: &Uuid,
+    conn: &PgPool,
+) -> Result<String> {
+    let comment_id = Uuid::new_v4();
+    sqlx::query!(
+        r#"
+        INSERT INTO comments (id, user_id, post_id, comment)
+        VALUES ($1, $2, $3, $4)
+        "#,
+        &comment_id,
+        user_id,
+        post_id,
+        new_comment.comment
+    )
+    .execute(conn)
+    .await
+    .context("Failed to insert new comment into database.")
+    .map_err(ApiError::Database)?;
+    Ok(comment_id.to_string())
+}
+
+pub async fn get_post_by_id(conn: &PgPool, post_id: &Uuid) -> Result<Option<Post>> {
+    let post = sqlx::query!(
+        r#"
+        SELECT id, title, location, author, content, created_at,
+        (SELECT COUNT(*) FROM comments WHERE comments.post_id = posts.id) AS "num_comments!", 
+        (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id) AS "num_likes!"
+        FROM posts
+        WHERE id = $1
+        "#,
+        post_id
+    )
+    .fetch_optional(conn)
+    .await
+    .context("Failed to get post by id.")
+    .map_err(ApiError::Database)?
+    .map(|post| Post {
+        id: post.id.to_string(),
+        title: post.title,
+        location: post.location,
+        content: post.content,
+        author: post.author.to_string(),
+        created_at: post.created_at.timestamp(),
+        num_comments: post.num_comments as u32,
+        num_likes: post.num_likes as u32,
+    });
+
+    Ok(post)
 }
