@@ -298,3 +298,32 @@ pub async fn get_users_by_query(query: String, conn: &PgPool) -> Result<Vec<Auth
 
     Ok(users)
 }
+
+pub async fn get_users_feed(conn: &PgPool, user_id: &Uuid) -> Result<Vec<Post>> {
+    let posts = sqlx::query!(
+        r#"
+        SELECT posts.id, posts.title, posts.location, posts.content, posts.author, posts.created_at
+        FROM posts
+        INNER JOIN users_followers ON posts.author = users_followers.user_id
+        WHERE users_followers.follower_id = $1
+        ORDER BY posts.created_at DESC
+        "#,
+        user_id
+    )
+    .fetch_all(conn)
+    .await
+    .context("Failed to get user's feed.")
+    .map_err(ApiError::Database)?
+    .into_iter()
+    .map(|post| Post {
+        id: post.id.to_string(),
+        title: post.title,
+        location: post.location,
+        content: post.content,
+        author: post.author.to_string(),
+        created_at: post.created_at.timestamp(),
+    })
+    .collect::<Vec<Post>>();
+
+    Ok(posts)
+}

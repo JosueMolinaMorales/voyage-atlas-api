@@ -26,6 +26,7 @@ pub struct TestApp {
     pub auth_info: TestAuthInfo,
 }
 
+#[derive(Debug)]
 pub struct TestAuthInfo {
     pub bearer: String,
     pub user: AuthUser,
@@ -138,6 +139,12 @@ impl TestApp {
             None => format!("{}/users", &self.address),
         };
         client.get(&url).send().await.unwrap()
+    }
+
+    pub async fn get_user_feed(&self, token: &str) -> reqwest::Response {
+        let client = reqwest::Client::new();
+        let url = format!("{}/feed", &self.address,);
+        client.get(&url).bearer_auth(token).send().await.unwrap()
     }
 }
 

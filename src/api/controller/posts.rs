@@ -1,4 +1,4 @@
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -25,4 +25,17 @@ pub async fn get_users_post(conn: &PgPool, user_id: String) -> Result<Vec<Post>>
 pub async fn create_post(conn: &PgPool, user_id: Uuid, post: CreatePost) -> Result<()> {
     database::insert_post(conn, user_id, post).await?;
     Ok(())
+}
+
+pub async fn get_users_feed(conn: &PgPool, user_id: Uuid) -> Result<Vec<Post>> {
+    // Check that the user exists
+    let user = database::get_user_by_id(conn, &user_id).await?;
+    if user.is_none() {
+        return Err(ApiError::NotFound(anyhow!("User does not exist")));
+    }
+
+    // Get the users feed
+    let feed = database::get_users_feed(conn, &user_id).await?;
+
+    Ok(feed)
 }

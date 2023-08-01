@@ -9,9 +9,10 @@ use actix_web::{
     web::{Data, Json, Path},
     HttpResponse,
 };
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use sqlx::PgPool;
 use std::str::FromStr;
+use uuid::Uuid;
 
 #[get("/users/{user_id}/posts")]
 #[tracing::instrument(name = "Get A Users Post", skip(path, conn))]
@@ -36,10 +37,16 @@ async fn create_post(
     Ok(HttpResponse::Created().finish())
 }
 
-#[get("/users/{user_id}/feed")]
-#[tracing::instrument(name = "Get A Users Feed", skip(path, _conn))]
-async fn get_users_feed(path: Path<(String,)>, _conn: Data<PgPool>) -> Result<HttpResponse> {
+#[get("/feed")]
+#[tracing::instrument(name = "Get A Users Feed", skip(token, conn))]
+async fn get_users_feed(token: JwtPayload, conn: Data<PgPool>) -> Result<HttpResponse> {
     // TODO: Implement
-    let (_user_id,) = path.into_inner();
-    Ok(HttpResponse::Ok().finish())
+    let user_id = Uuid::from_str(&token.user_id)
+        .context("Failed to convert UUID")
+        .map_err(ApiError::BadRequest)?;
+    /*
+       A users feed will be a list of posts from users that the user follows sorted by date.
+    */
+    let feed = controller::posts::get_users_feed(&conn, user_id).await?;
+    Ok(HttpResponse::Ok().json(feed))
 }
