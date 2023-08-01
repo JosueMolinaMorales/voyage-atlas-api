@@ -6,17 +6,12 @@ use crate::api::{
 };
 use actix_web::{
     get, post,
-    web::{Data, Json, Path, Query},
+    web::{Data, Json, Path},
     HttpResponse,
 };
 use anyhow::anyhow;
 use sqlx::PgPool;
 use std::str::FromStr;
-
-#[derive(serde::Deserialize)]
-struct UserSearchQuery {
-    query: Option<String>,
-}
 
 #[get("/users/{user_id}/posts")]
 #[tracing::instrument(name = "Get A Users Post", skip(path, conn))]
@@ -47,11 +42,4 @@ async fn get_users_feed(path: Path<(String,)>, _conn: Data<PgPool>) -> Result<Ht
     // TODO: Implement
     let (_user_id,) = path.into_inner();
     Ok(HttpResponse::Ok().finish())
-}
-
-#[get("/users")]
-#[tracing::instrument(name = "Get All Users", skip(conn, query))]
-async fn get_all_users(query: Query<UserSearchQuery>, conn: Data<PgPool>) -> Result<HttpResponse> {
-    let users = controller::user::get_users(query.query.clone(), &conn).await?;
-    Ok(HttpResponse::Ok().json(users))
 }

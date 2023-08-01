@@ -1,6 +1,6 @@
 use actix_web::{
     delete, get, post,
-    web::{Data, Json, Path},
+    web::{Data, Json, Path, Query},
     HttpResponse,
 };
 use sqlx::PgPool;
@@ -97,4 +97,16 @@ async fn unfollow_user(
     controller::user::unfollow_user(user_id, followed_user_id, &conn).await?;
 
     Ok(HttpResponse::Ok().finish())
+}
+
+#[get("/users")]
+#[tracing::instrument(name = "Get All Users", skip(conn))]
+async fn get_all_users(query: Query<UserSearchQuery>, conn: Data<PgPool>) -> Result<HttpResponse> {
+    let users = controller::user::get_users(query.query.clone(), &conn).await?;
+    Ok(HttpResponse::Ok().json(users))
+}
+
+#[derive(serde::Deserialize, Debug)]
+struct UserSearchQuery {
+    query: Option<String>,
 }
