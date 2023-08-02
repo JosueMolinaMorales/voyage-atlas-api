@@ -5,9 +5,10 @@ use uuid::Uuid;
 
 use crate::api::{
     database,
-    error::{ApiError, Result},
-    token::{self},
-    AuthInfo, AuthUser, CreateUser, LoginInfo, User,
+    models::{
+        error::{ApiError, Result},
+        token, AuthInfo, AuthUser, CreateUser, LoginInfo, User,
+    },
 };
 
 pub async fn register(new_user: CreateUser, conn: &PgPool) -> Result<AuthInfo> {

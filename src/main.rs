@@ -1,4 +1,8 @@
-use voyage_atlas_api::api::{get_configuration, get_subscriber, init_subscriber, Application};
+use voyage_atlas_api::api::{
+    configuration::get_configuration,
+    startup::Application,
+    telemetry::{get_subscriber, init_subscriber},
+};
 
 #[actix_web::main]
 async fn main() -> Result<(), std::io::Error> {

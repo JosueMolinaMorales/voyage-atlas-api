@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use serde_json::{json, Value};
 use uuid::Uuid;
-use voyage_atlas_api::api::{CreateComment, Post};
+use voyage_atlas_api::api::models::{Comment, CreateComment, Post};
 
 use crate::helpers::spawn_app;
 
@@ -136,10 +136,49 @@ async fn test_create_comment_fails_comment_too_long() {
         .create_comment(
             post_id,
             CreateComment {
-                comment: "a".repeat(256).into(),
+                comment: "a".repeat(256),
             },
             &test_app.auth_info.bearer,
         )
         .await;
     assert_eq!(res.status().as_u16(), 400);
+}
+
+#[tokio::test]
+async fn test_get_comments_on_post() {
+    let test_app = spawn_app().await;
+    // Create a post
+    let res = test_app
+        .create_post(
+            json!({
+                "title": "My first post",
+                "location": "location",
+                "content": "content"
+            }),
+            &test_app.auth_info.bearer,
+        )
+        .await;
+    assert_eq!(res.status().as_u16(), 201);
+    let json = res.json::<Value>().await.unwrap();
+    let post_id = json.get("post_id").unwrap().as_str().unwrap();
+
+    // Create comments
+    for i in 0..5 {
+        let res = test_app
+            .create_comment(
+                post_id,
+                CreateComment {
+                    comment: format!("Comment {}", i),
+                },
+                &test_app.auth_info.bearer,
+            )
+            .await;
+        assert_eq!(res.status().as_u16(), 201);
+    }
+
+    // Get comments
+    let res = test_app.get_comments(post_id).await;
+    assert_eq!(res.status().as_u16(), 200);
+    let comments = res.json::<Vec<Comment>>().await.unwrap();
+    assert_eq!(comments.len(), 5);
 }

@@ -7,7 +7,7 @@
 use std::str::FromStr;
 
 use uuid::Uuid;
-use voyage_atlas_api::api::Post;
+use voyage_atlas_api::api::models::Post;
 
 use crate::helpers::{spawn_app, TestAuthInfo};
 

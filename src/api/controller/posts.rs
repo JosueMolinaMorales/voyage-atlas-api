@@ -4,8 +4,10 @@ use uuid::Uuid;
 
 use crate::api::{
     database,
-    error::{ApiError, Result},
-    CreatePost, Post,
+    models::{
+        error::{ApiError, Result},
+        CreatePost, Post,
+    },
 };
 
 pub async fn get_users_post(conn: &PgPool, user_id: String) -> Result<Vec<Post>> {

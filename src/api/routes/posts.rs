@@ -1,12 +1,14 @@
 use crate::api::{
     controller,
-    error::{ApiError, Result},
-    token::JwtPayload,
-    CreatePost,
+    models::{
+        error::{ApiError, Result},
+        token::JwtPayload,
+        CreatePost,
+    },
 };
 use actix_web::{
     get, post,
-    web::{Data, Json, Path},
+    web::{self, Data, Json, Path},
     HttpResponse,
 };
 use anyhow::{anyhow, Context};
@@ -14,6 +16,12 @@ use serde_json::json;
 use sqlx::PgPool;
 use std::str::FromStr;
 use uuid::Uuid;
+
+pub fn init_post_routes(cfg: &mut web::ServiceConfig) {
+    cfg.service(get_users_post)
+        .service(create_post)
+        .service(get_users_feed);
+}
 
 #[get("/users/{user_id}/posts")]
 #[tracing::instrument(name = "Get A Users Post", skip(path, conn))]

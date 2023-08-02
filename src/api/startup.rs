@@ -4,7 +4,7 @@ use actix_web::{dev::Server, web::Data, App, HttpServer};
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use tracing::info;
 
-use crate::api::routes::*;
+use crate::api::routes::{health_check, init_comment_routes, init_post_routes, init_user_routes};
 
 use super::configuration::{DatabaseSettings, Settings};
 
@@ -62,17 +62,9 @@ pub fn run(
     let server = HttpServer::new(move || {
         App::new()
             .service(health_check)
-            .service(create_user)
-            .service(create_post)
-            .service(login)
-            .service(get_users_post)
-            .service(follow_user)
-            .service(get_followers)
-            .service(get_following)
-            .service(unfollow_user)
-            .service(get_all_users)
-            .service(get_users_feed)
-            .service(create_comment)
+            .configure(init_comment_routes)
+            .configure(init_user_routes)
+            .configure(init_post_routes)
             .app_data(connection.clone())
             .app_data(base_url.clone())
             .app_data(port.clone())

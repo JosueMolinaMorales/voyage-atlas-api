@@ -1,7 +1,8 @@
-mod comments;
 pub mod error;
-mod posts;
 pub mod token;
+
+mod comments;
+mod posts;
 mod user;
 
 pub use comments::*;

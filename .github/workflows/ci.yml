@@ -66,3 +66,35 @@ jobs:
               uses: actions-rs/cargo@v1
               with:
                 command: test
+    build:
+        name: Build App
+        runs-on: ubuntu-latest
+        services:
+            postgres:
+                image: postgres:12
+                env:
+                    POSTGRES_USER: postgres
+                    POSTGRES_PASSWORD: password
+                    POSTGRES_DB: voyage_atlas
+                ports:
+                    - 5432:5432
+        steps:
+            - name: Checkout sources
+              uses: actions/checkout@v2
+
+            - name: Install stable toolchain
+              uses: actions-rs/toolchain@v1
+              with:
+                profile: minimal
+                toolchain: stable
+                override: true
+            - name: Migrate database
+              run: |
+                sudo apt-get install libpq-dev -y
+                cargo install --version=0.6.0 sqlx-cli --no-default-features --features postgres,native-tls
+                SKIP_DOCKER=true ./scripts/init_db.sh
+            - name: build app
+              uses: actions-rs/cargo@v1
+              with:
+                command: build
+                args: --release

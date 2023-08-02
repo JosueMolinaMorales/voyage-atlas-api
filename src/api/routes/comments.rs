@@ -1,12 +1,6 @@
-use crate::api::{
-    controller,
-    error::{ApiError, Result},
-    token::JwtPayload,
-    CreateComment,
-};
 use actix_web::{
-    delete, post,
-    web::{Data, Json, Path},
+    delete, get, post,
+    web::{self, Data, Json, Path},
     HttpResponse,
 };
 use anyhow::Context;
@@ -15,7 +9,34 @@ use sqlx::PgPool;
 use uuid::Uuid;
 use validator::Validate;
 
+use crate::api::{
+    controller,
+    models::{
+        error::{ApiError, Result},
+        token::JwtPayload,
+        CreateComment,
+    },
+};
+
+pub fn init_comment_routes(cfg: &mut web::ServiceConfig) {
+    cfg.service(get_comments)
+        .service(create_comment)
+        .service(delete_comment);
+}
+
+#[get("/post/{post_id}/comment")]
+#[tracing::instrument(name = "Get Comments", skip(path, conn))]
+async fn get_comments(path: Path<(String,)>, conn: Data<PgPool>) -> Result<HttpResponse> {
+    let (post_id,) = path.into_inner();
+    let post_id = Uuid::parse_str(&post_id)
+        .context("Failed to parse post id")
+        .map_err(ApiError::BadRequest)?;
+    let comments = controller::comments::get_comments(&post_id, &conn).await?;
+    Ok(HttpResponse::Ok().json(comments))
+}
+
 #[post("/post/{post_id}/comment")]
+#[tracing::instrument(name = "Create Comment", skip(post_id, token, comment, conn))]
 async fn create_comment(
     post_id: Path<(String,)>,
     token: JwtPayload,
@@ -41,11 +62,13 @@ async fn create_comment(
 }
 
 #[post("/post/{post_id}/comment/{comment_id}/reply")]
+#[tracing::instrument(name = "Reply to Comment")]
 async fn reply_to_comment() -> HttpResponse {
     HttpResponse::Ok().finish()
 }
 
 #[delete("/post/{post_id}/comment/{comment_id}")]
+#[tracing::instrument(name = "Delete Comment")]
 async fn delete_comment() -> HttpResponse {
     HttpResponse::Ok().finish()
 }

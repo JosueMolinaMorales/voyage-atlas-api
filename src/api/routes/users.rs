@@ -1,6 +1,6 @@
 use actix_web::{
     delete, get, post,
-    web::{Data, Json, Path, Query},
+    web::{self, Data, Json, Path, Query},
     HttpResponse,
 };
 use sqlx::PgPool;
@@ -9,10 +9,22 @@ use validator::Validate;
 
 use crate::api::{
     controller,
-    error::{ApiError, Result},
-    token::JwtPayload,
-    CreateUser, LoginInfo,
+    models::{
+        error::{ApiError, Result},
+        token::JwtPayload,
+        CreateUser, LoginInfo,
+    },
 };
+
+pub fn init_user_routes(cfg: &mut web::ServiceConfig) {
+    cfg.service(create_user)
+        .service(login)
+        .service(follow_user)
+        .service(unfollow_user)
+        .service(get_followers)
+        .service(get_all_users)
+        .service(get_following);
+}
 
 #[post("/users")]
 #[tracing::instrument(name = "Create a new user", skip(new_user, conn))]

@@ -2,8 +2,10 @@ use once_cell::sync::Lazy;
 use sqlx::{sqlx_macros::migrate, Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 use voyage_atlas_api::api::{
-    get_configuration, get_connection_pool, get_subscriber, init_subscriber, token, Application,
-    AuthUser, CreateComment, DatabaseSettings,
+    configuration::{get_configuration, DatabaseSettings},
+    models::{token, AuthUser, CreateComment},
+    startup::{get_connection_pool, Application},
+    telemetry::{get_subscriber, init_subscriber},
 };
 
 static TRACING: Lazy<()> = Lazy::new(|| {
@@ -162,6 +164,12 @@ impl TestApp {
             .send()
             .await
             .unwrap()
+    }
+
+    pub async fn get_comments(&self, post_id: &str) -> reqwest::Response {
+        let client = reqwest::Client::new();
+        let url = format!("{}/post/{}/comment", &self.address, post_id);
+        client.get(&url).send().await.unwrap()
     }
 }
 
