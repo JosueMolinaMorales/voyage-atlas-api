@@ -182,6 +182,27 @@ impl TestApp {
         let url = format!("{}/post/{}/comment/{}", &self.address, post_id, comment_id);
         client.delete(&url).bearer_auth(token).send().await.unwrap()
     }
+
+    pub async fn create_reply_comment(
+        &self,
+        post_id: &str,
+        comment_id: &str,
+        comment: CreateComment,
+        token: &str,
+    ) -> reqwest::Response {
+        let client = reqwest::Client::new();
+        let url = format!(
+            "{}/post/{}/comment/{}/reply",
+            &self.address, post_id, comment_id
+        );
+        client
+            .post(&url)
+            .bearer_auth(token)
+            .json(&comment)
+            .send()
+            .await
+            .unwrap()
+    }
 }
 
 pub async fn spawn_app() -> TestApp {

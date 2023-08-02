@@ -13,4 +13,5 @@ pub struct Comment {
     pub post_id: String,
     pub comment: String,
     pub created_at: i64,
+    pub parent_comment_id: Option<String>,
 }

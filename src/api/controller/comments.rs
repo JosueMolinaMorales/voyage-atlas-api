@@ -74,3 +74,31 @@ pub async fn delete_comment(
     database::delete_comment(comment_id, conn).await?;
     Ok(())
 }
+
+pub async fn reply_to_comment(
+    user_id: &Uuid,
+    post_id: &Uuid,
+    comment_id: &Uuid,
+    new_comment: CreateComment,
+    conn: &PgPool,
+) -> Result<()> {
+    // Check if user exists
+    let user = database::get_user_by_id(conn, user_id).await?;
+    if user.is_none() {
+        return Err(ApiError::NotFound(anyhow!("User does not exist")));
+    }
+    // Check if post exists
+    let post = database::get_post_by_id(conn, post_id).await?;
+    if post.is_none() {
+        return Err(ApiError::NotFound(anyhow!("Post does not exist")));
+    }
+    // Check if comment exists
+    let comment = database::get_comment_by_id(comment_id, conn).await?;
+    if comment.is_none() {
+        return Err(ApiError::NotFound(anyhow!("Comment does not exist")));
+    }
+
+    // Reply to comment
+    database::reply_to_comment(new_comment, user_id, post_id, comment_id, conn).await?;
+    Ok(())
+}

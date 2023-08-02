@@ -49,6 +49,7 @@ pub async fn get_comments(post_id: &Uuid, conn: &PgPool) -> Result<Vec<Comment>>
         post_id: row.post_id.to_string(),
         comment: row.comment,
         created_at: row.created_at.timestamp(),
+        parent_comment_id: row.parent_comment_id.map(|id| id.to_string()),
     })
     .collect::<Vec<Comment>>();
 
@@ -73,6 +74,7 @@ pub async fn get_comment_by_id(comment_id: &Uuid, conn: &PgPool) -> Result<Optio
         post_id: row.post_id.to_string(),
         comment: row.comment,
         created_at: row.created_at.timestamp(),
+        parent_comment_id: row.parent_comment_id.map(|id| id.to_string()),
     });
 
     Ok(comment)
@@ -89,6 +91,32 @@ pub async fn delete_comment(comment_id: &Uuid, conn: &PgPool) -> Result<()> {
     .execute(conn)
     .await
     .context("Failed to delete comment")
+    .map_err(ApiError::Database)?;
+    Ok(())
+}
+
+pub async fn reply_to_comment(
+    comment: CreateComment,
+    user_id: &Uuid,
+    post_id: &Uuid,
+    comment_id: &Uuid,
+    conn: &PgPool,
+) -> Result<()> {
+    let reply_id = Uuid::new_v4();
+    sqlx::query!(
+        r#"
+        INSERT INTO comments (id, user_id, post_id, comment, parent_comment_id)
+        VALUES ($1, $2, $3, $4, $5)
+        "#,
+        &reply_id,
+        user_id,
+        post_id,
+        comment.comment,
+        comment_id
+    )
+    .execute(conn)
+    .await
+    .context("Failed to insert new comment into database.")
     .map_err(ApiError::Database)?;
     Ok(())
 }

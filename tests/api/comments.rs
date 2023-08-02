@@ -304,3 +304,111 @@ async fn test_delete_comment_fails_not_owner() {
     let json = res.json::<Value>().await.unwrap();
     assert_eq!(json["error"], "You are not the owner of this comment");
 }
+
+#[tokio::test]
+async fn test_create_reply_comment() {
+    let test_app = spawn_app().await;
+    // Create a post
+    let res = test_app
+        .create_post(
+            json!({
+                "title": "My first post",
+                "location": "location",
+                "content": "content"
+            }),
+            &test_app.auth_info.bearer,
+        )
+        .await;
+    assert_eq!(res.status().as_u16(), 201);
+    let json = res.json::<Value>().await.unwrap();
+    let post_id = json.get("post_id").unwrap().as_str().unwrap();
+
+    // Create comment
+    let res = test_app
+        .create_comment(
+            post_id,
+            CreateComment {
+                comment: "Comment".into(),
+            },
+            &test_app.auth_info.bearer,
+        )
+        .await;
+    assert_eq!(res.status().as_u16(), 201);
+    let json = res.json::<Value>().await.unwrap();
+    let comment_id = json.get("comment_id").unwrap().as_str().unwrap();
+
+    // Create reply comment
+    let res = test_app
+        .create_reply_comment(
+            post_id,
+            comment_id,
+            CreateComment {
+                comment: "Reply comment".into(),
+            },
+            &test_app.auth_info.bearer,
+        )
+        .await;
+    assert_eq!(res.status().as_u16(), 201);
+    // Check reply comment was created
+    let res = test_app.get_comments(post_id).await;
+    assert_eq!(res.status().as_u16(), 200);
+    let comments = res.json::<Vec<Comment>>().await.unwrap();
+    assert_eq!(comments.len(), 2);
+    assert_eq!(comments[0].comment, "Comment");
+    assert_eq!(comments[1].comment, "Reply comment");
+}
+
+#[tokio::test]
+async fn test_create_reply_comment_fails_comment_dne() {
+    let test_app = spawn_app().await;
+    // Create a post
+    let res = test_app
+        .create_post(
+            json!({
+                "title": "My first post",
+                "location": "location",
+                "content": "content"
+            }),
+            &test_app.auth_info.bearer,
+        )
+        .await;
+    assert_eq!(res.status().as_u16(), 201);
+    let json = res.json::<Value>().await.unwrap();
+    let post_id = json.get("post_id").unwrap().as_str().unwrap();
+
+    // Create reply comment
+    let res = test_app
+        .create_reply_comment(
+            post_id,
+            &Uuid::new_v4().to_string(),
+            CreateComment {
+                comment: "Reply comment".into(),
+            },
+            &test_app.auth_info.bearer,
+        )
+        .await;
+    assert_eq!(res.status().as_u16(), 404);
+    // Check error message
+    let json = res.json::<Value>().await.unwrap();
+    assert_eq!(json["error"], "Comment does not exist");
+}
+
+#[tokio::test]
+async fn test_create_reply_comment_fails_post_dne() {
+    let test_app = spawn_app().await;
+    // Create reply comment
+    let res = test_app
+        .create_reply_comment(
+            &Uuid::new_v4().to_string(),
+            &Uuid::new_v4().to_string(),
+            CreateComment {
+                comment: "Reply comment".into(),
+            },
+            &test_app.auth_info.bearer,
+        )
+        .await;
+    assert_eq!(res.status().as_u16(), 404);
+    // Check error message
+    let json = res.json::<Value>().await.unwrap();
+    assert_eq!(json["error"], "Post does not exist");
+}

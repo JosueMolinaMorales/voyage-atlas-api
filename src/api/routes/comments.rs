@@ -21,7 +21,8 @@ use crate::api::{
 pub fn init_comment_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(get_comments)
         .service(create_comment)
-        .service(delete_comment);
+        .service(delete_comment)
+        .service(reply_to_comment);
 }
 
 #[get("/post/{post_id}/comment")]
@@ -62,9 +63,30 @@ async fn create_comment(
 }
 
 #[post("/post/{post_id}/comment/{comment_id}/reply")]
-#[tracing::instrument(name = "Reply to Comment")]
-async fn reply_to_comment() -> HttpResponse {
-    HttpResponse::Ok().finish()
+#[tracing::instrument(name = "Reply to Comment", skip(path, token, comment, conn))]
+async fn reply_to_comment(
+    path: Path<(String, String)>,
+    token: JwtPayload,
+    comment: Json<CreateComment>,
+    conn: Data<PgPool>,
+) -> Result<HttpResponse> {
+    let (post_id, comment_id) = path.into_inner();
+    let post_id = Uuid::parse_str(&post_id)
+        .context("Failed to parse post id")
+        .map_err(ApiError::BadRequest)?;
+    let comment_id = Uuid::parse_str(&comment_id)
+        .context("Failed to parse comment id")
+        .map_err(ApiError::BadRequest)?;
+    let user_id = Uuid::parse_str(&token.user_id)
+        .context("Failed to parse user id")
+        .map_err(ApiError::InternalServer)?;
+    comment
+        .validate()
+        .context("Validation failed")
+        .map_err(ApiError::BadRequest)?;
+    controller::comments::reply_to_comment(&user_id, &post_id, &comment_id, comment.0, &conn)
+        .await?;
+    Ok(HttpResponse::Created().finish())
 }
 
 #[delete("/post/{post_id}/comment/{comment_id}")]
