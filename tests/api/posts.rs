@@ -127,3 +127,72 @@ async fn test_get_a_users_feed_not_following_anyone() {
     let posts: Vec<Post> = res.json().await.unwrap();
     assert_eq!(posts.len(), 0);
 }
+
+#[tokio::test]
+async fn test_liking_a_post() {
+    let test_app = spawn_app().await;
+    // Create a post
+    let body = serde_json::json!({
+        "title": "My first post",
+        "location": "location",
+        "content": "content"
+    });
+    let response = test_app.create_post(body, &test_app.auth_info.bearer).await;
+    assert_eq!(response.status().as_u16(), 201);
+    let json = response.json::<serde_json::Value>().await.unwrap();
+    let post_id = Uuid::from_str(json.get("post_id").unwrap().as_str().unwrap()).unwrap();
+    // Like the post
+    let res = test_app
+        .like_a_post(&post_id.to_string(), &test_app.auth_info.bearer)
+        .await;
+    assert_eq!(res.status().as_u16(), 201);
+    // Check that the post was liked
+    let like = sqlx::query!(
+        r#"
+        SELECT * from likes
+        WHERE post_id = $1 AND user_id = $2"#,
+        post_id,
+        Uuid::from_str(&test_app.auth_info.user.id).unwrap()
+    )
+    .fetch_optional(&test_app.db_pool)
+    .await
+    .unwrap();
+
+    assert!(like.is_some());
+}
+
+#[tokio::test]
+async fn test_liking_a_post_fail_post_dne() {
+    let test_app = spawn_app().await;
+    // Like the post
+    let res = test_app
+        .like_a_post(&Uuid::new_v4().to_string(), &test_app.auth_info.bearer)
+        .await;
+    assert_eq!(res.status().as_u16(), 404);
+}
+
+#[tokio::test]
+async fn test_liking_a_post_fail_already_liked() {
+    let test_app = spawn_app().await;
+    // Create a post
+    let body = serde_json::json!({
+        "title": "My first post",
+        "location": "location",
+        "content": "content"
+    });
+    let response = test_app.create_post(body, &test_app.auth_info.bearer).await;
+    assert_eq!(response.status().as_u16(), 201);
+
+    let json = response.json::<serde_json::Value>().await.unwrap();
+    let post_id = Uuid::from_str(json.get("post_id").unwrap().as_str().unwrap()).unwrap();
+    // Like the post
+    let res = test_app
+        .like_a_post(&post_id.to_string(), &test_app.auth_info.bearer)
+        .await;
+    assert_eq!(res.status().as_u16(), 201);
+    // Like the post again
+    let res = test_app
+        .like_a_post(&post_id.to_string(), &test_app.auth_info.bearer)
+        .await;
+    assert_eq!(res.status().as_u16(), 400);
+}

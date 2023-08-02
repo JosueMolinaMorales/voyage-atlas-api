@@ -19,3 +19,10 @@ pub struct CreatePost {
     #[validate(length(min = 3), length(max = 255))]
     pub content: String,
 }
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct Like {
+    pub user_id: String,
+    pub post_id: String,
+    pub created_at: i64,
+}

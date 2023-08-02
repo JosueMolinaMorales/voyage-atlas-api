@@ -20,7 +20,8 @@ use uuid::Uuid;
 pub fn init_post_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(get_users_post)
         .service(create_post)
-        .service(get_users_feed);
+        .service(get_users_feed)
+        .service(like_a_post);
 }
 
 #[get("/users/{user_id}/posts")]
@@ -58,4 +59,24 @@ async fn get_users_feed(token: JwtPayload, conn: Data<PgPool>) -> Result<HttpRes
     */
     let feed = controller::posts::get_users_feed(&conn, user_id).await?;
     Ok(HttpResponse::Ok().json(feed))
+}
+
+#[post("/post/{post_id}/like")]
+#[tracing::instrument(name = "Like a Post", skip(path, token, conn))]
+async fn like_a_post(
+    token: JwtPayload,
+    path: Path<(String,)>,
+    conn: Data<PgPool>,
+) -> Result<HttpResponse> {
+    let (post_id,) = path.into_inner();
+    let user_id = Uuid::from_str(&token.user_id)
+        .context("Failed to convert UUID")
+        .map_err(ApiError::InternalServer)?;
+    let post_id = Uuid::from_str(&post_id)
+        .context("Failed to convert UUID")
+        .map_err(ApiError::BadRequest)?;
+
+    controller::posts::like_a_post(&user_id, &post_id, &conn).await?;
+
+    Ok(HttpResponse::Created().finish())
 }

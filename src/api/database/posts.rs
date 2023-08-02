@@ -1,6 +1,6 @@
 use crate::api::models::{
     error::{ApiError, Result},
-    CreatePost, Post,
+    CreatePost, Like, Post,
 };
 use anyhow::Context;
 use sqlx::PgPool;
@@ -84,4 +84,48 @@ pub async fn get_post_by_id(conn: &PgPool, post_id: &Uuid) -> Result<Option<Post
     });
 
     Ok(post)
+}
+
+pub async fn get_like_by_user_and_post(
+    conn: &PgPool,
+    user_id: &Uuid,
+    post_id: &Uuid,
+) -> Result<Option<Like>> {
+    let like = sqlx::query!(
+        r#"
+        SELECT user_id, post_id, created_at
+        FROM likes
+        WHERE user_id = $1 AND post_id = $2
+        "#,
+        user_id,
+        post_id
+    )
+    .fetch_optional(conn)
+    .await
+    .context("Failed to get like by user and post.")
+    .map_err(ApiError::Database)?
+    .map(|like| Like {
+        user_id: like.user_id.to_string(),
+        post_id: like.post_id.to_string(),
+        created_at: like.created_at.timestamp(),
+    });
+
+    Ok(like)
+}
+
+pub async fn like_post(conn: &PgPool, user_id: &Uuid, post_id: &Uuid) -> Result<()> {
+    sqlx::query!(
+        r#"
+        INSERT INTO likes (user_id, post_id)
+        VALUES ($1, $2)
+        "#,
+        user_id,
+        post_id
+    )
+    .execute(conn)
+    .await
+    .context("Failed to like post.")
+    .map_err(ApiError::Database)?;
+
+    Ok(())
 }
