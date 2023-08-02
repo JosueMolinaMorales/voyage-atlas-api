@@ -7,7 +7,7 @@ use crate::api::{
     },
 };
 use actix_web::{
-    get, post,
+    delete, get, post,
     web::{self, Data, Json, Path},
     HttpResponse,
 };
@@ -21,7 +21,8 @@ pub fn init_post_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(get_users_post)
         .service(create_post)
         .service(get_users_feed)
-        .service(like_a_post);
+        .service(like_a_post)
+        .service(unlike_a_post);
 }
 
 #[get("/users/{user_id}/posts")]
@@ -79,4 +80,24 @@ async fn like_a_post(
     controller::posts::like_a_post(&user_id, &post_id, &conn).await?;
 
     Ok(HttpResponse::Created().finish())
+}
+
+#[delete("/post/{post_id}/like")]
+#[tracing::instrument(name = "Unlike a Post", skip(path, token, conn))]
+async fn unlike_a_post(
+    token: JwtPayload,
+    path: Path<(String,)>,
+    conn: Data<PgPool>,
+) -> Result<HttpResponse> {
+    let (post_id,) = path.into_inner();
+    let user_id = Uuid::from_str(&token.user_id)
+        .context("Failed to convert UUID")
+        .map_err(ApiError::InternalServer)?;
+    let post_id = Uuid::from_str(&post_id)
+        .context("Failed to convert UUID")
+        .map_err(ApiError::BadRequest)?;
+
+    controller::posts::unlike_a_post(&user_id, &post_id, &conn).await?;
+
+    Ok(HttpResponse::NoContent().finish())
 }

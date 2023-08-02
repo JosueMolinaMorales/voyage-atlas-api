@@ -57,11 +57,33 @@ pub async fn like_a_post(user_id: &Uuid, post_id: &Uuid, conn: &PgPool) -> Resul
     let like = database::get_like_by_user_and_post(conn, user_id, post_id).await?;
     if like.is_some() {
         return Err(ApiError::BadRequest(anyhow!(
-            "User has already liked this post"
+            "You have already liked this post"
         )));
     }
     // Like the post
     database::like_post(conn, user_id, post_id).await?;
+
+    Ok(())
+}
+
+pub async fn unlike_a_post(user_id: &Uuid, post_id: &Uuid, conn: &PgPool) -> Result<()> {
+    // Check that the user exists
+    let user = database::get_user_by_id(conn, user_id).await?;
+    if user.is_none() {
+        return Err(ApiError::NotFound(anyhow!("User does not exist")));
+    }
+    // Check that the post exists
+    let post = database::get_post_by_id(conn, post_id).await?;
+    if post.is_none() {
+        return Err(ApiError::NotFound(anyhow!("Post not found")));
+    }
+    // Check that the user has liked the post
+    let like = database::get_like_by_user_and_post(conn, user_id, post_id).await?;
+    if like.is_none() {
+        return Err(ApiError::BadRequest(anyhow!("Post not liked")));
+    }
+    // Unlike the post
+    database::unlike_post(conn, user_id, post_id).await?;
 
     Ok(())
 }

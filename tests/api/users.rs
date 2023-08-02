@@ -161,6 +161,17 @@ async fn test_follow_user_already_following_user() {
         .follow_user(&new_user.user.id, &test_app.auth_info.bearer)
         .await;
     assert_eq!(res.status().as_u16(), 400);
+    let body = res.json::<Value>().await.expect("failed to parse response");
+    let error = body
+        .get("error")
+        .expect("failed to get error")
+        .as_str()
+        .expect("failed to get error as string");
+    assert!(
+        error == "User is already following this user",
+        "Expected error to be 'User is already following this user', got {}",
+        error
+    );
 }
 
 #[tokio::test]
@@ -249,6 +260,17 @@ async fn test_unfollow_user_is_not_following_user() {
         .unfollow_user(&new_user.user.id, &test_app.auth_info.bearer)
         .await;
     assert_eq!(res.status().as_u16(), 400);
+    let body = res.json::<Value>().await.expect("failed to parse response");
+    let error = body
+        .get("error")
+        .expect("failed to get error")
+        .as_str()
+        .expect("failed to get error as string");
+    assert!(
+        error == "You are not following this user",
+        "Expected error to be 'You are not following this user', got {}",
+        error
+    );
 }
 
 #[tokio::test]

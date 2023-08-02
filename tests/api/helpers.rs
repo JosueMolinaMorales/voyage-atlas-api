@@ -209,6 +209,12 @@ impl TestApp {
         let url = format!("{}/post/{}/like", &self.address, post_id);
         client.post(&url).bearer_auth(token).send().await.unwrap()
     }
+
+    pub async fn unlike_a_post(&self, post_id: &str, token: &str) -> reqwest::Response {
+        let client = reqwest::Client::new();
+        let url = format!("{}/post/{}/like", &self.address, post_id);
+        client.delete(&url).bearer_auth(token).send().await.unwrap()
+    }
 }
 
 pub async fn spawn_app() -> TestApp {

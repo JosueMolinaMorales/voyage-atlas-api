@@ -129,3 +129,20 @@ pub async fn like_post(conn: &PgPool, user_id: &Uuid, post_id: &Uuid) -> Result<
 
     Ok(())
 }
+
+pub async fn unlike_post(conn: &PgPool, user_id: &Uuid, post_id: &Uuid) -> Result<()> {
+    sqlx::query!(
+        r#"
+        DELETE FROM likes
+        WHERE user_id = $1 AND post_id = $2
+        "#,
+        user_id,
+        post_id
+    )
+    .execute(conn)
+    .await
+    .context("Failed to unlike post.")
+    .map_err(ApiError::Database)?;
+
+    Ok(())
+}
