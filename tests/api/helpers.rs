@@ -171,6 +171,17 @@ impl TestApp {
         let url = format!("{}/post/{}/comment", &self.address, post_id);
         client.get(&url).send().await.unwrap()
     }
+
+    pub async fn delete_comment(
+        &self,
+        post_id: &str,
+        comment_id: &str,
+        token: &str,
+    ) -> reqwest::Response {
+        let client = reqwest::Client::new();
+        let url = format!("{}/post/{}/comment/{}", &self.address, post_id, comment_id);
+        client.delete(&url).bearer_auth(token).send().await.unwrap()
+    }
 }
 
 pub async fn spawn_app() -> TestApp {

@@ -4,7 +4,7 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 use voyage_atlas_api::api::models::{Comment, CreateComment, Post};
 
-use crate::helpers::spawn_app;
+use crate::helpers::{spawn_app, TestAuthInfo};
 
 #[tokio::test]
 async fn test_create_comment() {
@@ -181,4 +181,126 @@ async fn test_get_comments_on_post() {
     assert_eq!(res.status().as_u16(), 200);
     let comments = res.json::<Vec<Comment>>().await.unwrap();
     assert_eq!(comments.len(), 5);
+}
+
+#[tokio::test]
+async fn test_delete_comment() {
+    let test_app = spawn_app().await;
+    // Create a post
+    let res = test_app
+        .create_post(
+            json!({
+                "title": "My first post",
+                "location": "location",
+                "content": "content"
+            }),
+            &test_app.auth_info.bearer,
+        )
+        .await;
+    assert_eq!(res.status().as_u16(), 201);
+    let json = res.json::<Value>().await.unwrap();
+    let post_id = json.get("post_id").unwrap().as_str().unwrap();
+
+    // Create comment
+    let res = test_app
+        .create_comment(
+            post_id,
+            CreateComment {
+                comment: "Comment".into(),
+            },
+            &test_app.auth_info.bearer,
+        )
+        .await;
+    assert_eq!(res.status().as_u16(), 201);
+    let json = res.json::<Value>().await.unwrap();
+    let comment_id = json.get("comment_id").unwrap().as_str().unwrap();
+
+    // Delete comment
+    let res = test_app
+        .delete_comment(post_id, comment_id, &test_app.auth_info.bearer)
+        .await;
+    assert_eq!(res.status().as_u16(), 200);
+    // Check comment was deleted
+    let res = test_app.get_comments(post_id).await;
+    assert_eq!(res.status().as_u16(), 200);
+    let comments = res.json::<Vec<Comment>>().await.unwrap();
+    assert_eq!(comments.len(), 0);
+}
+
+#[tokio::test]
+async fn test_delete_comment_fails_comment_dne() {
+    let test_app = spawn_app().await;
+    // Create a post
+    let res = test_app
+        .create_post(
+            json!({
+                "title": "My first post",
+                "location": "location",
+                "content": "content"
+            }),
+            &test_app.auth_info.bearer,
+        )
+        .await;
+    assert_eq!(res.status().as_u16(), 201);
+    let json = res.json::<Value>().await.unwrap();
+    let post_id = json.get("post_id").unwrap().as_str().unwrap();
+
+    // Delete comment
+    let res = test_app
+        .delete_comment(
+            post_id,
+            &Uuid::new_v4().to_string(),
+            &test_app.auth_info.bearer,
+        )
+        .await;
+    assert_eq!(res.status().as_u16(), 404);
+    // Check error message
+    let json = res.json::<Value>().await.unwrap();
+    assert_eq!(json["error"], "Comment does not exist");
+}
+
+#[tokio::test]
+async fn test_delete_comment_fails_not_owner() {
+    let test_app = spawn_app().await;
+    // Create a post
+    let res = test_app
+        .create_post(
+            json!({
+                "title": "My first post",
+                "location": "location",
+                "content": "content"
+            }),
+            &test_app.auth_info.bearer,
+        )
+        .await;
+    assert_eq!(res.status().as_u16(), 201);
+    let json = res.json::<Value>().await.unwrap();
+    let post_id = json.get("post_id").unwrap().as_str().unwrap();
+
+    // Create comment
+    let res = test_app
+        .create_comment(
+            post_id,
+            CreateComment {
+                comment: "Comment".into(),
+            },
+            &test_app.auth_info.bearer,
+        )
+        .await;
+    assert_eq!(res.status().as_u16(), 201);
+    let json = res.json::<Value>().await.unwrap();
+    let comment_id = json.get("comment_id").unwrap().as_str().unwrap();
+
+    // Create a new user
+    let user = TestAuthInfo::generate();
+    user.store(&test_app.db_pool).await;
+
+    // Delete comment
+    let res = test_app
+        .delete_comment(post_id, comment_id, &user.bearer)
+        .await;
+    assert_eq!(res.status().as_u16(), 403);
+    // Check error message
+    let json = res.json::<Value>().await.unwrap();
+    assert_eq!(json["error"], "You are not the owner of this comment");
 }

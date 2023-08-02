@@ -69,6 +69,21 @@ async fn reply_to_comment() -> HttpResponse {
 
 #[delete("/post/{post_id}/comment/{comment_id}")]
 #[tracing::instrument(name = "Delete Comment")]
-async fn delete_comment() -> HttpResponse {
-    HttpResponse::Ok().finish()
+async fn delete_comment(
+    path: Path<(String, String)>,
+    token: JwtPayload,
+    conn: Data<PgPool>,
+) -> Result<HttpResponse> {
+    let (post_id, comment_id) = path.into_inner();
+    let post_id = Uuid::parse_str(&post_id)
+        .context("Failed to parse post id")
+        .map_err(ApiError::BadRequest)?;
+    let comment_id = Uuid::parse_str(&comment_id)
+        .context("Failed to parse comment id")
+        .map_err(ApiError::BadRequest)?;
+    let user_id = Uuid::parse_str(&token.user_id)
+        .context("Failed to parse user id")
+        .map_err(ApiError::InternalServer)?;
+    controller::comments::delete_comment(&user_id, &post_id, &comment_id, &conn).await?;
+    Ok(HttpResponse::Ok().finish())
 }
