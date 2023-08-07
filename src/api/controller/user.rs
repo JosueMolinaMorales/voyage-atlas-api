@@ -155,3 +155,13 @@ pub async fn get_users(query: Option<String>, conn: &PgPool) -> Result<Vec<AuthU
 
     Ok(users)
 }
+
+pub async fn get_user_by_id(user_id: Uuid, conn: &PgPool) -> Result<AuthUser> {
+    let user = database::get_user_by_id(conn, &user_id).await?;
+
+    if user.is_none() {
+        return Err(ApiError::NotFound(anyhow::anyhow!("User does not exist")));
+    }
+
+    Ok(user.unwrap().into())
+}

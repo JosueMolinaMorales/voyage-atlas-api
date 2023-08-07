@@ -7,7 +7,7 @@
 use std::str::FromStr;
 
 use uuid::Uuid;
-use voyage_atlas_api::api::models::Post;
+use voyage_atlas_api::api::models::{Like, Post};
 
 use crate::helpers::{spawn_app, TestAuthInfo};
 
@@ -283,4 +283,32 @@ async fn test_unliking_a_post_fail_not_liked() {
     // Check error message
     let json = res.json::<serde_json::Value>().await.unwrap();
     assert_eq!(json.get("error").unwrap(), "Post not liked");
+}
+
+#[tokio::test]
+async fn test_get_likes_for_a_post() {
+    let test_app = spawn_app().await;
+    // Create a post
+    let body = serde_json::json!({
+        "title": "My first post",
+        "location": "location",
+        "content": "content"
+    });
+    let response = test_app.create_post(body, &test_app.auth_info.bearer).await;
+    assert_eq!(response.status().as_u16(), 201);
+
+    let json = response.json::<serde_json::Value>().await.unwrap();
+    let post_id = Uuid::from_str(json.get("post_id").unwrap().as_str().unwrap()).unwrap();
+    // Like the post
+    let res = test_app
+        .like_a_post(&post_id.to_string(), &test_app.auth_info.bearer)
+        .await;
+    assert_eq!(res.status().as_u16(), 201);
+    // Get likes for the post
+    let res = test_app.get_likes_for_a_post(&post_id.to_string()).await;
+    assert_eq!(res.status().as_u16(), 200);
+    // Check that the post was liked
+    let likes = res.json::<Vec<Like>>().await.unwrap();
+    assert_eq!(likes.len(), 1);
+    assert_eq!(likes[0].user.id, test_app.auth_info.user.id);
 }

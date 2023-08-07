@@ -23,7 +23,8 @@ pub fn init_user_routes(cfg: &mut web::ServiceConfig) {
         .service(unfollow_user)
         .service(get_followers)
         .service(get_all_users)
-        .service(get_following);
+        .service(get_following)
+        .service(get_user);
 }
 
 #[post("/users")]
@@ -116,6 +117,18 @@ async fn unfollow_user(
 async fn get_all_users(query: Query<UserSearchQuery>, conn: Data<PgPool>) -> Result<HttpResponse> {
     let users = controller::user::get_users(query.query.clone(), &conn).await?;
     Ok(HttpResponse::Ok().json(users))
+}
+
+#[get("/users/{user_id}")]
+#[tracing::instrument(name = "Get a user", skip(conn))]
+async fn get_user(user_id: Path<(String,)>, conn: Data<PgPool>) -> Result<HttpResponse> {
+    let (user_id,) = user_id.into_inner();
+    let user_id =
+        Uuid::parse_str(&user_id).map_err(|e| ApiError::BadRequest(anyhow::anyhow!(e)))?;
+
+    let user = controller::user::get_user_by_id(user_id, &conn).await?;
+
+    Ok(HttpResponse::Ok().json(user))
 }
 
 #[derive(serde::Deserialize, Debug)]

@@ -1,5 +1,6 @@
 use actix_web::ResponseError;
 use serde_json::json;
+use tracing::log::error;
 
 pub type Result<T> = std::result::Result<T, ApiError>;
 
@@ -30,6 +31,7 @@ impl std::fmt::Display for ApiError {
 
 impl ResponseError for ApiError {
     fn status_code(&self) -> reqwest::StatusCode {
+        error!("ERROR: {}", self);
         match self {
             ApiError::BadRequest(_) => reqwest::StatusCode::BAD_REQUEST,
             ApiError::Unauthorized(_) => reqwest::StatusCode::UNAUTHORIZED,

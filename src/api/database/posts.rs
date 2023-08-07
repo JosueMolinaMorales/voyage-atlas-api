@@ -1,6 +1,6 @@
 use crate::api::models::{
     error::{ApiError, Result},
-    CreatePost, Like, Post,
+    AuthUser, CreatePost, Like, Post,
 };
 use anyhow::Context;
 use sqlx::PgPool;
@@ -93,9 +93,9 @@ pub async fn get_like_by_user_and_post(
 ) -> Result<Option<Like>> {
     let like = sqlx::query!(
         r#"
-        SELECT user_id, post_id, created_at
-        FROM likes
-        WHERE user_id = $1 AND post_id = $2
+        SELECT user_id, post_id, likes.created_at, username, email
+        FROM likes, users
+        WHERE likes.user_id = users.id AND likes.user_id = $1 AND likes.post_id = $2
         "#,
         user_id,
         post_id
@@ -105,12 +105,44 @@ pub async fn get_like_by_user_and_post(
     .context("Failed to get like by user and post.")
     .map_err(ApiError::Database)?
     .map(|like| Like {
-        user_id: like.user_id.to_string(),
         post_id: like.post_id.to_string(),
         created_at: like.created_at.timestamp(),
+        user: AuthUser {
+            id: like.user_id.to_string(),
+            username: like.username,
+            email: like.email,
+        },
     });
 
     Ok(like)
+}
+
+pub async fn get_likes_of_post(conn: &PgPool, post_id: &Uuid) -> Result<Vec<Like>> {
+    let likes = sqlx::query!(
+        r#"
+        SELECT user_id, post_id, likes.created_at, username, email
+        FROM likes, users
+        WHERE likes.user_id = users.id AND likes.post_id = $1
+        "#,
+        post_id
+    )
+    .fetch_all(conn)
+    .await
+    .context("Failed to get likes of post.")
+    .map_err(ApiError::Database)?
+    .into_iter()
+    .map(|like| Like {
+        user: AuthUser {
+            id: like.user_id.to_string(),
+            username: like.username,
+            email: like.email,
+        },
+        post_id: like.post_id.to_string(),
+        created_at: like.created_at.timestamp(),
+    })
+    .collect::<Vec<Like>>();
+
+    Ok(likes)
 }
 
 pub async fn like_post(conn: &PgPool, user_id: &Uuid, post_id: &Uuid) -> Result<()> {

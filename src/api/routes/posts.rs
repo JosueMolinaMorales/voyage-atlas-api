@@ -22,11 +22,12 @@ pub fn init_post_routes(cfg: &mut web::ServiceConfig) {
         .service(create_post)
         .service(get_users_feed)
         .service(like_a_post)
-        .service(unlike_a_post);
+        .service(unlike_a_post)
+        .service(get_likes_of_post);
 }
 
 #[get("/users/{user_id}/posts")]
-#[tracing::instrument(name = "Get A Users Post", skip(path, conn))]
+#[tracing::instrument(name = "Get A Users Post", skip(conn))]
 async fn get_users_post(path: Path<(String,)>, conn: Data<PgPool>) -> Result<HttpResponse> {
     let (user_id,) = path.into_inner();
     let posts = controller::posts::get_users_post(&conn, user_id).await?;
@@ -60,6 +61,20 @@ async fn get_users_feed(token: JwtPayload, conn: Data<PgPool>) -> Result<HttpRes
     */
     let feed = controller::posts::get_users_feed(&conn, user_id).await?;
     Ok(HttpResponse::Ok().json(feed))
+}
+
+#[get("/post/{post_id}/like")]
+#[tracing::instrument(name = "Get Likes for a post", skip(path, conn))]
+async fn get_likes_of_post(path: Path<(String,)>, conn: Data<PgPool>) -> Result<HttpResponse> {
+    let (post_id,) = path.into_inner();
+
+    let post_id = Uuid::from_str(&post_id)
+        .context("Failed to convert UUID")
+        .map_err(ApiError::BadRequest)?;
+
+    let likes = controller::posts::get_likes_of_post(&post_id, &conn).await?;
+
+    Ok(HttpResponse::Ok().json(json!(likes)))
 }
 
 #[post("/post/{post_id}/like")]

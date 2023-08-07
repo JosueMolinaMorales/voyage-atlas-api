@@ -305,3 +305,17 @@ async fn test_get_users_query() {
     let users = res.json::<Vec<Value>>().await.unwrap();
     assert_eq!(users.len(), 10);
 }
+
+#[tokio::test]
+async fn test_get_a_user() {
+    let test_app = spawn_app().await;
+    // Create user
+    let new_user = TestAuthInfo::generate();
+    new_user.store(&test_app.db_pool).await;
+
+    // Get user
+    let res = test_app.get_user(&new_user.user.id).await;
+    assert_eq!(res.status().as_u16(), 200);
+    let user = res.json::<Value>().await.unwrap();
+    assert_eq!(user["username"], new_user.user.username);
+}

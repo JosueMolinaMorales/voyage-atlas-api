@@ -89,8 +89,8 @@ pub async fn insert_user(
         VALUES ($1, $2, $3, $4)
         "#,
         user_id,
-        user.username,
-        user.email,
+        user.username.to_lowercase(),
+        user.email.to_lowercase(),
         password
     )
     .execute(conn)
@@ -233,7 +233,7 @@ pub async fn get_users_by_query(query: String, conn: &PgPool) -> Result<Vec<Auth
         FROM users
         WHERE username LIKE $1
         "#,
-        format!("%{}%", query)
+        format!("%{}%", query.to_lowercase())
     )
     .fetch_all(conn)
     .await

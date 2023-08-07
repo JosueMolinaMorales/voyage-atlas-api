@@ -1,3 +1,5 @@
+use super::AuthUser;
+
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Post {
     pub id: String,
@@ -22,7 +24,7 @@ pub struct CreatePost {
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Like {
-    pub user_id: String,
+    pub user: AuthUser,
     pub post_id: String,
     pub created_at: i64,
 }

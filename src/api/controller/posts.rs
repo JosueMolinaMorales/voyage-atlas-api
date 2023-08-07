@@ -6,10 +6,22 @@ use crate::api::{
     database,
     models::{
         error::{ApiError, Result},
-        CreatePost, Post,
+        CreatePost, Like, Post,
     },
 };
 
+pub async fn get_likes_of_post(post_id: &Uuid, conn: &PgPool) -> Result<Vec<Like>> {
+    // Check that the post exists
+    let post = database::get_post_by_id(conn, post_id).await?;
+    if post.is_none() {
+        return Err(ApiError::NotFound(anyhow!("Post does not exist")));
+    }
+    // Get the likes of the post
+    let like = database::get_likes_of_post(conn, post_id).await?;
+    Ok(like)
+}
+
+#[tracing::instrument("Controller: Get a users posts", skip(conn))]
 pub async fn get_users_post(conn: &PgPool, user_id: String) -> Result<Vec<Post>> {
     let user_id = Uuid::parse_str(&user_id)
         .context("Failed to convert user id to UUID")
