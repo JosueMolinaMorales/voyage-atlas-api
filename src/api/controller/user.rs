@@ -52,6 +52,8 @@ pub async fn register(new_user: CreateUser, conn: &PgPool) -> Result<AuthInfo> {
             id: user_id.to_string(),
             username: new_user.username,
             email: new_user.email,
+            name: format!("{} {}", new_user.first_name, new_user.last_name),
+            description: new_user.description,
         },
     })
 }
@@ -59,7 +61,7 @@ pub async fn register(new_user: CreateUser, conn: &PgPool) -> Result<AuthInfo> {
 pub async fn login(login: LoginInfo, conn: &PgPool) -> Result<AuthInfo> {
     // Check if user exists
     let user: Option<User> = database::get_user_by_email(conn, &login.email).await?;
-
+    println!("{:?}", user);
     let auth_user: AuthUser = if let Some(user) = user {
         // Check password
         if !pwhash::bcrypt::verify(login.password, user.password.expose_secret()) {

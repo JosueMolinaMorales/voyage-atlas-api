@@ -44,6 +44,8 @@ impl TestAuthInfo {
                 id,
                 username: username.to_string(),
                 email: format!("{}@email", username),
+                name: "Test User".to_string(),
+                description: "Test Description".to_string(),
             },
         }
     }
@@ -57,6 +59,8 @@ impl TestAuthInfo {
                 id,
                 username: Uuid::new_v4().to_string(),
                 email: format!("{}@email", Uuid::new_v4().to_string()),
+                name: "Test User".to_string(),
+                description: "Test Description".to_string(),
             },
         }
     }

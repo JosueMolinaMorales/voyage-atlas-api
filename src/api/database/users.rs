@@ -11,7 +11,7 @@ use crate::api::models::{
 pub async fn get_user_by_id(conn: &PgPool, user_id: &Uuid) -> Result<Option<User>> {
     let user = sqlx::query!(
         r#"
-        SELECT id, username, email, password
+        SELECT id, username, email, password, first_name, last_name, description
         FROM users
         WHERE id = $1
         "#,
@@ -24,6 +24,8 @@ pub async fn get_user_by_id(conn: &PgPool, user_id: &Uuid) -> Result<Option<User
     .map(|user| User {
         id: user.id.to_string(),
         username: user.username,
+        name: format!("{} {}", user.first_name, user.last_name),
+        description: user.description,
         email: user.email,
         password: Secret::new(user.password),
     });
@@ -34,7 +36,7 @@ pub async fn get_user_by_id(conn: &PgPool, user_id: &Uuid) -> Result<Option<User
 pub async fn get_user_by_username(conn: &PgPool, username: &str) -> Result<Option<User>> {
     let user = sqlx::query!(
         r#"
-        SELECT id, username, email, password
+        SELECT id, username, email, password, first_name, last_name, description
         FROM users
         WHERE username = $1
         "#,
@@ -47,6 +49,8 @@ pub async fn get_user_by_username(conn: &PgPool, username: &str) -> Result<Optio
     .map(|user| User {
         id: user.id.to_string(),
         username: user.username,
+        name: format!("{} {}", user.first_name, user.last_name),
+        description: user.description,
         email: user.email,
         password: Secret::new(user.password),
     });
@@ -57,7 +61,7 @@ pub async fn get_user_by_username(conn: &PgPool, username: &str) -> Result<Optio
 pub async fn get_user_by_email(conn: &PgPool, email: &str) -> Result<Option<User>> {
     let user = sqlx::query!(
         r#"
-        SELECT id, username, email, password
+        SELECT id, username, email, password, first_name, last_name, description
         FROM users
         WHERE email = $1
         "#,
@@ -69,6 +73,8 @@ pub async fn get_user_by_email(conn: &PgPool, email: &str) -> Result<Option<User
     .map_err(ApiError::Database)?
     .map(|user| User {
         id: user.id.to_string(),
+        name: format!("{} {}", user.first_name, user.last_name),
+        description: user.description,
         username: user.username,
         email: user.email,
         password: Secret::new(user.password),
@@ -85,11 +91,14 @@ pub async fn insert_user(
 ) -> Result<()> {
     sqlx::query!(
         r#"
-        INSERT INTO users (id, username, email, password)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO users (id, username, first_name, last_name, description, email, password)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         "#,
         user_id,
         user.username.to_lowercase(),
+        user.first_name,
+        user.last_name,
+        user.description,
         user.email.to_lowercase(),
         password
     )
@@ -141,7 +150,7 @@ pub async fn is_following(conn: &PgPool, follower_id: &Uuid, followed_id: &Uuid)
 pub async fn get_followers(conn: &PgPool, user_id: &Uuid) -> Result<Vec<AuthUser>> {
     let followers = sqlx::query!(
         r#"
-        SELECT users.id, users.username, users.email
+        SELECT users.id, users.username, users.email, users.first_name, users.last_name, users.description
         FROM users
         INNER JOIN users_followers ON users.id = users_followers.follower_id
         WHERE users_followers.user_id = $1
@@ -156,6 +165,8 @@ pub async fn get_followers(conn: &PgPool, user_id: &Uuid) -> Result<Vec<AuthUser
     .map(|user| AuthUser {
         id: user.id.to_string(),
         username: user.username,
+        name: format!("{} {}", user.first_name, user.last_name),
+        description: user.description,
         email: user.email,
     })
     .collect::<Vec<AuthUser>>();
@@ -166,7 +177,7 @@ pub async fn get_followers(conn: &PgPool, user_id: &Uuid) -> Result<Vec<AuthUser
 pub async fn get_following(conn: &PgPool, user_id: &Uuid) -> Result<Vec<AuthUser>> {
     let following = sqlx::query!(
         r#"
-        SELECT users.id, users.username, users.email
+        SELECT users.id, users.username, users.email, users.first_name, users.last_name, users.description
         FROM users
         INNER JOIN users_followers ON users.id = users_followers.user_id
         WHERE users_followers.follower_id = $1
@@ -181,6 +192,8 @@ pub async fn get_following(conn: &PgPool, user_id: &Uuid) -> Result<Vec<AuthUser
     .map(|user| AuthUser {
         id: user.id.to_string(),
         username: user.username,
+        name: format!("{} {}", user.first_name, user.last_name),
+        description: user.description,
         email: user.email,
     })
     .collect::<Vec<AuthUser>>();
@@ -207,7 +220,7 @@ pub async fn unfollow_user(conn: &PgPool, user_id: &Uuid, followed_id: &Uuid) ->
 pub async fn get_all_users(conn: &PgPool) -> Result<Vec<AuthUser>> {
     let users = sqlx::query!(
         r#"
-        SELECT id, username, email
+        SELECT id, username, email, first_name, last_name, description
         FROM users
         "#,
     )
@@ -219,6 +232,8 @@ pub async fn get_all_users(conn: &PgPool) -> Result<Vec<AuthUser>> {
     .map(|user| AuthUser {
         id: user.id.to_string(),
         username: user.username,
+        name: format!("{} {}", user.first_name, user.last_name),
+        description: user.description,
         email: user.email,
     })
     .collect::<Vec<AuthUser>>();
@@ -229,7 +244,7 @@ pub async fn get_all_users(conn: &PgPool) -> Result<Vec<AuthUser>> {
 pub async fn get_users_by_query(query: String, conn: &PgPool) -> Result<Vec<AuthUser>> {
     let users = sqlx::query!(
         r#"
-        SELECT id, username, email
+        SELECT id, username, email, first_name, last_name, description
         FROM users
         WHERE username LIKE $1
         "#,
@@ -243,6 +258,8 @@ pub async fn get_users_by_query(query: String, conn: &PgPool) -> Result<Vec<Auth
     .map(|user| AuthUser {
         id: user.id.to_string(),
         username: user.username,
+        name: format!("{} {}", user.first_name, user.last_name),
+        description: user.description,
         email: user.email,
     })
     .collect::<Vec<AuthUser>>();

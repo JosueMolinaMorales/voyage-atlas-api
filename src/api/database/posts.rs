@@ -93,7 +93,7 @@ pub async fn get_like_by_user_and_post(
 ) -> Result<Option<Like>> {
     let like = sqlx::query!(
         r#"
-        SELECT user_id, post_id, likes.created_at, username, email
+        SELECT user_id, post_id, likes.created_at, username, email, description, first_name, last_name
         FROM likes, users
         WHERE likes.user_id = users.id AND likes.user_id = $1 AND likes.post_id = $2
         "#,
@@ -110,6 +110,8 @@ pub async fn get_like_by_user_and_post(
         user: AuthUser {
             id: like.user_id.to_string(),
             username: like.username,
+            description: like.description,
+            name: format!("{} {}", like.first_name, like.last_name),
             email: like.email,
         },
     });
@@ -120,7 +122,7 @@ pub async fn get_like_by_user_and_post(
 pub async fn get_likes_of_post(conn: &PgPool, post_id: &Uuid) -> Result<Vec<Like>> {
     let likes = sqlx::query!(
         r#"
-        SELECT user_id, post_id, likes.created_at, username, email
+        SELECT user_id, post_id, likes.created_at, username, email, description, first_name, last_name
         FROM likes, users
         WHERE likes.user_id = users.id AND likes.post_id = $1
         "#,
@@ -134,6 +136,8 @@ pub async fn get_likes_of_post(conn: &PgPool, post_id: &Uuid) -> Result<Vec<Like
     .map(|like| Like {
         user: AuthUser {
             id: like.user_id.to_string(),
+            description: like.description,
+            name: format!("{} {}", like.first_name, like.last_name),
             username: like.username,
             email: like.email,
         },

@@ -1,17 +1,22 @@
 use secrecy::Secret;
 use validator::Validate;
 
+#[derive(Debug)]
 pub struct User {
     pub id: String,
     pub username: String,
     pub email: String,
     pub password: Secret<String>,
+    pub name: String,
+    pub description: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
 pub struct AuthUser {
     pub id: String,
     pub username: String,
+    pub name: String,
+    pub description: String,
     pub email: String,
 }
 
@@ -27,6 +32,8 @@ impl From<User> for AuthUser {
             id: user.id,
             username: user.username,
             email: user.email,
+            name: user.name,
+            description: user.description,
         }
     }
 }
@@ -43,6 +50,9 @@ pub struct CreateUser {
     pub email: String,
     #[validate(length(min = 3), length(max = 20))]
     pub username: String,
+    pub first_name: String,
+    pub description: String,
+    pub last_name: String,
     #[validate(custom = "validate_password")]
     pub password: String,
 }
