@@ -1,6 +1,6 @@
 use crate::api::models::{
     error::{ApiError, Result},
-    Comment, CreateComment,
+    AuthUser, Comment, CreateComment,
 };
 use anyhow::Context;
 use sqlx::PgPool;
@@ -33,8 +33,10 @@ pub async fn create_comment(
 pub async fn get_comments(post_id: &Uuid, conn: &PgPool) -> Result<Vec<Comment>> {
     let comments = sqlx::query!(
         r#"
-            SELECT * from comments
-            where post_id = $1
+            SELECT comments.id, user_id, post_id, parent_comment_id, comments.created_at, comment,
+            users.username, users.email as "user_email!", users.description, users.first_name, users.last_name
+            FROM comments, users
+            where comments.user_id = users.id and post_id = $1
         "#,
         post_id
     )
@@ -45,11 +47,17 @@ pub async fn get_comments(post_id: &Uuid, conn: &PgPool) -> Result<Vec<Comment>>
     .into_iter()
     .map(|row| Comment {
         id: row.id.to_string(),
-        user_id: row.user_id.to_string(),
         post_id: row.post_id.to_string(),
         comment: row.comment,
         created_at: row.created_at.timestamp(),
         parent_comment_id: row.parent_comment_id.map(|id| id.to_string()),
+        user: AuthUser {
+            id: row.user_id.to_string(),
+            username: row.username,
+            email: row.user_email,
+            name: format!("{} {}", row.first_name, row.last_name),
+            description: row.description
+        },
     })
     .collect::<Vec<Comment>>();
 
@@ -59,8 +67,10 @@ pub async fn get_comments(post_id: &Uuid, conn: &PgPool) -> Result<Vec<Comment>>
 pub async fn get_comment_by_id(comment_id: &Uuid, conn: &PgPool) -> Result<Option<Comment>> {
     let comment = sqlx::query!(
         r#"
-            SELECT * from comments
-            where id = $1
+            SELECT comments.id, user_id, post_id, parent_comment_id, comments.created_at, comment,
+            users.username, users.email as "user_email!", users.description, users.first_name, users.last_name
+            FROM comments, users
+            where comments.id = $1
         "#,
         comment_id
     )
@@ -70,11 +80,17 @@ pub async fn get_comment_by_id(comment_id: &Uuid, conn: &PgPool) -> Result<Optio
     .map_err(ApiError::Database)?
     .map(|row| Comment {
         id: row.id.to_string(),
-        user_id: row.user_id.to_string(),
         post_id: row.post_id.to_string(),
         comment: row.comment,
         created_at: row.created_at.timestamp(),
         parent_comment_id: row.parent_comment_id.map(|id| id.to_string()),
+        user: AuthUser {
+            id: row.user_id.to_string(),
+            username: row.username,
+            email: row.user_email,
+            name: format!("{} {}", row.first_name, row.last_name),
+            description: row.description
+        },
     });
 
     Ok(comment)

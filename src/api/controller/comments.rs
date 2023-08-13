@@ -65,7 +65,7 @@ pub async fn delete_comment(
         return Err(ApiError::NotFound(anyhow!("Comment does not exist")));
     };
     // Check if user is the owner of the comment
-    if comment.user_id != *user_id.to_string() {
+    if comment.user.id != *user_id.to_string() {
         return Err(ApiError::Forbidden(anyhow!(
             "You are not the owner of this comment"
         )));
